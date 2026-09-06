@@ -32,6 +32,7 @@
 25. Prepared the Oracle VM with Docker, Compose, persistent resume storage, and firewall access for SSH, HTTP, and HTTPS.
 26. Added Caddy to the production Compose stack for automatic HTTPS and reverse proxy routing for the frontend and API domains.
 27. Enabled forwarded-header handling so OAuth callbacks retain HTTPS when the backend runs behind Caddy.
+28. Added public Privacy Policy and Terms of Service pages at `/privacy-policy` and `/terms-of-service`, linked from the Google OAuth login screen.
 
 ## Verification
 

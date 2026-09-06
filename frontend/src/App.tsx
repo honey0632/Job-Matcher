@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { api, Match, Preferences, User } from './api'
 
 type View = 'profile' | 'resume' | 'search' | 'matches'
@@ -11,6 +12,11 @@ const emptyPreferences: Preferences = {
 }
 
 export default function App() {
+  const path = window.location.pathname
+
+  if (path === '/privacy-policy') return <PrivacyPolicy />
+  if (path === '/terms-of-service') return <TermsOfService />
+
   const [user, setUser] = useState<User | null>(null)
   const [view, setView] = useState<View>('profile')
   const [preferences, setPreferences] = useState(emptyPreferences)
@@ -34,8 +40,84 @@ export default function App() {
           <h1>Find work that fits.</h1>
           <p>Sign in, upload your resume, and discover roles matched to your experience.</p>
           <a className="button primary" href={`${backendUrl}/oauth2/authorization/google`}>Continue with Google</a>
+          <LegalLinks />
         </section>
       </main>
+    )
+  }
+
+  function LegalLinks() {
+    return (
+      <nav className="legal-links" aria-label="Legal">
+        <a href="/privacy-policy">Privacy Policy</a>
+        <a href="/terms-of-service">Terms of Service</a>
+      </nav>
+    )
+  }
+
+  function LegalPage({ title, eyebrow, children }: { title: string; eyebrow: string; children: ReactNode }) {
+    return (
+      <main className="legal-page">
+        <article className="legal-card">
+          <a className="back-link" href="/">← Back to Job Matcher</a>
+          <p className="eyebrow">{eyebrow}</p>
+          <h1>{title}</h1>
+          <p className="legal-updated">Last updated: September 6, 2026</p>
+          {children}
+          <LegalLinks />
+        </article>
+      </main>
+    )
+  }
+
+  function PrivacyPolicy() {
+    return (
+      <LegalPage title="Privacy Policy" eyebrow="JOB MATCHER">
+        <p>Job Matcher helps users discover job opportunities based on their preferences and uploaded resume. This policy explains what information we collect and how we use it.</p>
+        <h2>Information we collect</h2>
+        <ul>
+          <li>Google account information provided through Google OAuth, such as your name, email address, and provider identifier.</li>
+          <li>Search preferences, including country, experience, and desired role.</li>
+          <li>Resume files and extracted resume text that you choose to upload.</li>
+          <li>Job search results and match scores generated for your account.</li>
+          <li>Basic technical information needed to operate secure sessions and protect the service.</li>
+        </ul>
+        <h2>How we use information</h2>
+        <p>We use this information to authenticate you, store your profile and preferences, extract resume text, search job listings, calculate job-match scores, and maintain application security. We do not sell your personal information.</p>
+        <h2>Google OAuth</h2>
+        <p>Sign-in is provided by Google. Job Matcher receives only the account information authorized by Google for this application. We do not receive or store your Google password.</p>
+        <h2>Storage and retention</h2>
+        <p>Your account data and resume remain stored while your account is active or as needed to provide the service. Contact us to request deletion or correction of your data.</p>
+        <h2>Third parties</h2>
+        <p>We use Google for authentication and Google Careers data for job discovery. Job links may take you to third-party websites whose privacy practices are governed by their own policies.</p>
+        <h2>Contact</h2>
+        <p>For privacy questions or deletion requests, contact the Job Matcher administrator through the contact method published on the application website.</p>
+      </LegalPage>
+    )
+  }
+
+  function TermsOfService() {
+    return (
+      <LegalPage title="Terms of Service" eyebrow="JOB MATCHER">
+        <p>By using Job Matcher, you agree to these terms. If you do not agree, do not use the service.</p>
+        <h2>Service description</h2>
+        <p>Job Matcher provides job discovery, resume text extraction, and automated matching based on information you provide. Match scores are estimates and are not guarantees of employment, interviews, or recruiter interest.</p>
+        <h2>Your responsibilities</h2>
+        <ul>
+          <li>Provide accurate information and upload only resumes you are authorized to use.</li>
+          <li>Keep your Google account secure and do not share access to your session.</li>
+          <li>Do not misuse the service, attempt unauthorized access, or upload malicious content.</li>
+          <li>Review job details independently before applying or sharing information with an employer.</li>
+        </ul>
+        <h2>Third-party job listings</h2>
+        <p>Job listings and links may come from Google Careers or other third parties. We do not guarantee their accuracy, availability, compensation, or hiring outcome.</p>
+        <h2>Intellectual property</h2>
+        <p>You retain rights to your uploaded resume. Job Matcher and its software, branding, and service design remain the property of their respective owners.</p>
+        <h2>Availability and changes</h2>
+        <p>The service is provided on an availability basis and may change or be discontinued. We may update these terms when the service changes.</p>
+        <h2>Contact</h2>
+        <p>For questions about these terms, contact the Job Matcher administrator through the contact method published on the application website.</p>
+      </LegalPage>
     )
   }
 
