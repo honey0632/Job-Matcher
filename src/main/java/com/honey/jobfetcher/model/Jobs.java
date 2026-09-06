@@ -20,14 +20,19 @@ public class Jobs {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
-    @Column(unique = true , nullable = false)
+    @Column(columnDefinition = "TEXT", unique = true, nullable = false)
     private String externalId;
+    @Column(columnDefinition = "TEXT")
     private String title;
     @Column(columnDefinition = "TEXT")
     private String description;
+    @Column(columnDefinition = "TEXT")
     private String company;
+    @Column(columnDefinition = "TEXT")
     private String location;
+    @Column(columnDefinition = "TEXT")
     private String jobUrl;
+    @Column(columnDefinition = "TEXT")
     private String source;
 /*
     Status ={0 = no action,
