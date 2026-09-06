@@ -26,6 +26,12 @@ public class OAuth2AccountService extends DefaultOAuth2UserService {
         String email = oauthUser.getAttribute("email");
         String name = oauthUser.getAttribute("name");
 
+        upsertAccount(provider, subject, email, name);
+
+        return oauthUser;
+    }
+
+    public void upsertAccount(String provider, String subject, String email, String name) {
         if (subject == null || email == null) {
             throw new IllegalStateException("OAuth provider did not return subject and email");
         }
@@ -42,7 +48,5 @@ public class OAuth2AccountService extends DefaultOAuth2UserService {
             user.setCreatedAt(LocalDateTime.now());
         }
         userRepository.save(user);
-
-        return oauthUser;
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -27,6 +28,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             OAuth2UserService<OAuth2UserRequest, OAuth2User> oauth2UserService,
+            OidcUserService oidcUserService,
             CorsConfigurationSource corsConfigurationSource,
             @Value("${app.frontend.origin:http://localhost:5173}") String frontendOrigin
     ) throws Exception {
@@ -50,6 +52,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(oauth2UserService)
+                                .oidcUserService(oidcUserService)
                         )
                         .successHandler(new SimpleUrlAuthenticationSuccessHandler(frontendOrigin))
                 )
