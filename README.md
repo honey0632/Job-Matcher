@@ -255,6 +255,8 @@ docker compose --env-file .env -f compose.production.yaml up -d
 
 The production Compose file runs PostgreSQL on the same Oracle VM to avoid an additional database charge. PostgreSQL data is stored in the named `postgres-data` volume and should be backed up separately. Copy `.env.oracle.example` to `.env` on the VM and replace `POSTGRES_PASSWORD` with a strong random value before deployment. Do not use the local developer `.env` on the VM.
 
+The production stack also includes Caddy. It serves HTTPS for `jobmatcher.in` and `api.jobmatcher.in` and routes traffic to the frontend and backend containers. Both DNS records must point to the Oracle VM before Caddy can obtain certificates.
+
 The frontend image receives `VITE_API_BASE_URL` during the GitHub Actions build. Set the corresponding GitHub repository variable before publishing production images. Runtime secrets such as database credentials and OAuth secrets belong only in the server's `.env`.
 
 ## Project structure

@@ -1,4 +1,20 @@
 services:
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - jobmatcher
+
   postgres:
     image: postgres:16
     restart: unless-stopped
@@ -33,8 +49,6 @@ services:
   frontend:
     image: ghcr.io/${GHCR_OWNER}/job-fetcher-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       - backend
     networks:
@@ -42,6 +56,8 @@ services:
 
 volumes:
   postgres-data:
+  caddy-data:
+  caddy-config:
 
 networks:
   jobmatcher:
