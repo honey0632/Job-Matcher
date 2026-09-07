@@ -1,3 +1,5 @@
+// Manages user account creation and retrieval.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.dto.CreateUserRequest;

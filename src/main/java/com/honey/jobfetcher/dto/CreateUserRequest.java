@@ -1,3 +1,5 @@
+// Carries the fields required to create a user account.
+
 package com.honey.jobfetcher.dto;
 
 import jakarta.validation.constraints.Email;

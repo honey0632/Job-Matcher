@@ -1,3 +1,5 @@
+// Carries criteria for searching and filtering jobs.
+
 package com.honey.jobfetcher.dto;
 
 import jakarta.validation.constraints.Min;

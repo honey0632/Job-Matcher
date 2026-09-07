@@ -1,3 +1,5 @@
+// Exposes job search and listing endpoints.
+
 package com.honey.jobfetcher.controller;
 
 import com.honey.jobfetcher.model.Jobs;

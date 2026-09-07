@@ -1,3 +1,5 @@
+// Bootstraps the Job Fetcher Spring Boot application.
+
 package com.honey.jobfetcher;
 
 import org.springframework.boot.SpringApplication;

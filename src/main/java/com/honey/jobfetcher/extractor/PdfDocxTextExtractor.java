@@ -1,3 +1,5 @@
+// Extracts searchable text from PDF and DOCX resume files.
+
 package com.honey.jobfetcher.extractor;
 
 import org.apache.pdfbox.Loader;

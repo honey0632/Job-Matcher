@@ -1,3 +1,5 @@
+// Configures the HTTP client used for outbound service calls.
+
 package com.honey.jobfetcher.config;
 
 import org.springframework.context.annotation.Bean;

@@ -1,3 +1,5 @@
+// Verifies text extraction from supported resume formats.
+
 package com.honey.jobfetcher.extractor;
 
 import org.apache.pdfbox.pdmodel.PDDocument;

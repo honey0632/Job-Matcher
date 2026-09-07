@@ -1,3 +1,5 @@
+// Verifies conversion of Google Careers data into job listings.
+
 package com.honey.jobfetcher.parser;
 
 import com.honey.jobfetcher.model.Jobs;

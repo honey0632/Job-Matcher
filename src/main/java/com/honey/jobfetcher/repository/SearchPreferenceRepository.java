@@ -1,3 +1,5 @@
+// Provides persistence operations for search preferences.
+
 package com.honey.jobfetcher.repository;
 
 import com.honey.jobfetcher.model.SearchPreference;

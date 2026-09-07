@@ -1,3 +1,5 @@
+// Verifies criteria-based job search and filtering behavior.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.dto.JobMatchResponse;
@@ -32,6 +34,8 @@ class CriteriaSearchServiceTest {
 
     @Test
     void returnsAllMatchesAboveNegativeOnePercent() {
+        // The test confirms that the temporary testing threshold includes all
+        // scores above -1 while preserving the requested search location.
         User user = new User();
         user.setId(7L);
 

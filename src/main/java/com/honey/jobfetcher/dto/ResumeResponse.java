@@ -1,3 +1,5 @@
+// Represents resume metadata returned by the API.
+
 package com.honey.jobfetcher.dto;
 
 import com.honey.jobfetcher.model.Resume;

@@ -1,3 +1,5 @@
+// Coordinates resume validation, extraction, and storage.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.dto.ResumeResponse;

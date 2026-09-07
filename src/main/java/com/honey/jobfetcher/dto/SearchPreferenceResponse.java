@@ -1,3 +1,5 @@
+// Represents saved job search preferences returned by the API.
+
 package com.honey.jobfetcher.dto;
 
 import com.honey.jobfetcher.model.SearchPreference;

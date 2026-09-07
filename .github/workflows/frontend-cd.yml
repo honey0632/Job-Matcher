@@ -1,3 +1,5 @@
+# Publishes the frontend container after successful main-branch CI.
+
 name: Frontend CD
 
 on:

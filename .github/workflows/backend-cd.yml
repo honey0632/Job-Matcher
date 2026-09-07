@@ -1,3 +1,5 @@
+# Publishes the backend container after successful main-branch CI.
+
 name: Backend CD
 
 on:

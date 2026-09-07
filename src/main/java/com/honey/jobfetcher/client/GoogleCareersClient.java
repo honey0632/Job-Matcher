@@ -1,3 +1,5 @@
+// Fetches job listings from the Google Careers search endpoint.
+
 package com.honey.jobfetcher.client;
 
 import org.springframework.http.HttpHeaders;

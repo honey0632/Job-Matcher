@@ -1,3 +1,5 @@
+// Exposes user account endpoints.
+
 package com.honey.jobfetcher.controller;
 
 import com.honey.jobfetcher.dto.CreateUserRequest;

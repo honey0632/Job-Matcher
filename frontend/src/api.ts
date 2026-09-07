@@ -1,3 +1,5 @@
+// Centralizes typed API calls, CSRF handling, and authenticated request behavior.
+
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 let csrfToken: string | undefined
 

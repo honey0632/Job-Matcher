@@ -1,3 +1,5 @@
+// Provides persistence operations for users.
+
 package com.honey.jobfetcher.repository;
 
 import com.honey.jobfetcher.model.User;

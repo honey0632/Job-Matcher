@@ -1,3 +1,5 @@
+// Exposes profile and search-preference endpoints.
+
 package com.honey.jobfetcher.controller;
 
 import com.honey.jobfetcher.dto.SearchPreferenceRequest;

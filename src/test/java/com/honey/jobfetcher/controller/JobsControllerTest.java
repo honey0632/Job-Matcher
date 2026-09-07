@@ -1,3 +1,5 @@
+// Tests HTTP behavior exposed by the jobs controller.
+
 package com.honey.jobfetcher.controller;
 
 import com.honey.jobfetcher.model.Jobs;

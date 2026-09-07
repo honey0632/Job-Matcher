@@ -1,3 +1,5 @@
+// Verifies job retrieval and search service behavior.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.client.GoogleCareersClient;

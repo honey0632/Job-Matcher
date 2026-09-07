@@ -1,3 +1,5 @@
+// Checks the application’s primary security boundaries.
+
 package com.honey.jobfetcher.security;
 
 import org.junit.jupiter.api.Test;

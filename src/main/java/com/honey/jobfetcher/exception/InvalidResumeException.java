@@ -1,3 +1,5 @@
+// Signals that an uploaded resume cannot be accepted.
+
 package com.honey.jobfetcher.exception;
 
 import org.springframework.http.HttpStatus;

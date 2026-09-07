@@ -1,3 +1,5 @@
+// Signals a failure while storing or reading a resume.
+
 package com.honey.jobfetcher.exception;
 
 import org.springframework.http.HttpStatus;

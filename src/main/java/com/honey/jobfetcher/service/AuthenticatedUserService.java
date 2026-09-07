@@ -1,3 +1,5 @@
+// Resolves the currently authenticated application user.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.model.User;

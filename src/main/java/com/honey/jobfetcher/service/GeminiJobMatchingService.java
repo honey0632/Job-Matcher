@@ -1,3 +1,5 @@
+// Uses Gemini to score jobs against extracted resume content.
+
 package com.honey.jobfetcher.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -56,6 +58,7 @@ public class GeminiJobMatchingService implements JobMatchingService {
 
     @Override
     public List<JobMatchResponse> findMatches(Long resumeId, int limit, String location) {
+        // Keep the request bounded so free-tier Gemini usage remains predictable.
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("Match limit must be between 1 and 100");
         }
@@ -71,6 +74,7 @@ public class GeminiJobMatchingService implements JobMatchingService {
                 ));
 
         List<Jobs> candidates = jobsRepository.findAll().stream()
+                // Location filtering happens before sending job data to Gemini.
                 .filter(job -> matchesLocation(job, location))
                 .limit(MAX_AI_JOBS)
                 .toList();
@@ -89,6 +93,7 @@ public class GeminiJobMatchingService implements JobMatchingService {
     }
 
     private Map<String, Integer> requestScores(Resume resume, List<Jobs> jobs) {
+        // Gemini receives one structured batch request instead of one request per job.
         String prompt = buildPrompt(resume, jobs);
         ObjectNode body = objectMapper.createObjectNode();
         ArrayNode contents = body.putArray("contents");
@@ -100,17 +105,23 @@ public class GeminiJobMatchingService implements JobMatchingService {
                 .put("temperature", 0)
                 .put("responseMimeType", "application/json");
 
-        JsonNode response = restClient.post()
+        String responseBody = restClient.post()
                 .uri("/v1beta/models/{model}:generateContent", model)
                 .header("x-goog-api-key", apiKey)
                 .header(HttpHeaders.CONTENT_TYPE, "application/json")
-                .body(body)
+                .body(body.toString())
                 .retrieve()
-                .body(JsonNode.class);
+                .body(String.class);
 
-        String responseText = response == null
-                ? null
-                : response.at("/candidates/0/content/parts/0/text").asText(null);
+        String responseText;
+        try {
+            // Parse the raw response explicitly because RestClient must not serialize
+            // Jackson's JsonNode tree as a Java bean.
+            JsonNode response = objectMapper.readTree(responseBody);
+            responseText = response.at("/candidates/0/content/parts/0/text").asText(null);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Gemini returned invalid response JSON", exception);
+        }
         if (responseText == null || responseText.isBlank()) {
             throw new IllegalStateException("Gemini returned an empty matching response");
         }

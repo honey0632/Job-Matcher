@@ -1,3 +1,5 @@
+// Defines authentication, authorization, and CSRF security rules.
+
 package com.honey.jobfetcher.config;
 
 import com.honey.jobfetcher.service.OAuth2AccountService;

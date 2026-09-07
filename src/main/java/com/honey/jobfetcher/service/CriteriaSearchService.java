@@ -1,3 +1,5 @@
+// Searches external jobs and applies user criteria to the results.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.dto.JobMatchResponse;
@@ -31,6 +33,7 @@ public class CriteriaSearchService {
     }
 
     public List<JobMatchResponse> search(User user, JobSearchRequest request) {
+        // Use the same criteria for the external search and the local match filter.
         String query = request.desiredRole().trim()
                 + " " + request.country().trim()
                 + " " + request.experienceYears() + " years experience";

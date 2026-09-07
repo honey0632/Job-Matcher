@@ -1,3 +1,5 @@
+// Carries user-provided job search preferences.
+
 package com.honey.jobfetcher.dto;
 
 import jakarta.validation.constraints.Min;

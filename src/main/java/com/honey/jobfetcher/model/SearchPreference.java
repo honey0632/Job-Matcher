@@ -1,3 +1,5 @@
+// Models the saved job-search criteria for a user.
+
 package com.honey.jobfetcher.model;
 
 import jakarta.persistence.Entity;

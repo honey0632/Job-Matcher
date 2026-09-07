@@ -1,3 +1,5 @@
+// Scores jobs locally using keyword overlap with a resume.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.dto.JobMatchResponse;
@@ -38,6 +40,7 @@ public class KeywordJobMatchingService implements JobMatchingService {
 
     @Override
     public List<JobMatchResponse> findMatches(Long resumeId, int limit, String location) {
+        // The keyword provider remains available as a local/offline fallback.
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("Match limit must be between 1 and 100");
         }
@@ -62,6 +65,7 @@ public class KeywordJobMatchingService implements JobMatchingService {
     }
 
     private boolean matchesLocation(Jobs job, String location) {
+        // A remote role is considered eligible for any requested country.
         if (location == null || location.isBlank()) {
             return true;
         }

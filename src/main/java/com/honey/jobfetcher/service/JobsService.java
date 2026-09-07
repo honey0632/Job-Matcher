@@ -1,3 +1,5 @@
+// Coordinates job retrieval and search operations.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.client.GoogleCareersClient;

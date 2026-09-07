@@ -1,3 +1,5 @@
+// Defines the contract for extracting text from resume files.
+
 package com.honey.jobfetcher.extractor;
 
 import java.io.IOException;

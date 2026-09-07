@@ -1,3 +1,5 @@
+// Manages users’ saved job-search preferences.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.dto.SearchPreferenceRequest;

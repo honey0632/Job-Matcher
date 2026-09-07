@@ -1,3 +1,5 @@
+// Handles resume upload, download, and deletion endpoints.
+
 package com.honey.jobfetcher.controller;
 
 import com.honey.jobfetcher.dto.ResumeResponse;

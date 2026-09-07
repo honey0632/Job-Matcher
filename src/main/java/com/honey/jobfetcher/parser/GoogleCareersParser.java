@@ -1,3 +1,5 @@
+// Parses Google Careers responses into application job listings.
+
 package com.honey.jobfetcher.parser;
 
 import com.honey.jobfetcher.model.Jobs;

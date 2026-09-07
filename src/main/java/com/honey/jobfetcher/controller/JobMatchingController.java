@@ -1,3 +1,5 @@
+// Exposes resume-to-job matching endpoints.
+
 package com.honey.jobfetcher.controller;
 
 import com.honey.jobfetcher.dto.JobMatchResponse;
@@ -40,6 +42,7 @@ public class JobMatchingController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "") String location
     ) {
+        // Validate the caller-provided threshold before querying the authenticated resume.
         if (threshold < -100 || threshold > 100) {
             throw new IllegalArgumentException("Threshold must be between -100 and 100");
         }

@@ -1,3 +1,5 @@
+// Maps OAuth2 provider identities to application accounts.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.model.User;

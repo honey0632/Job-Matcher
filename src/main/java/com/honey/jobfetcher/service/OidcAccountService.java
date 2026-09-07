@@ -1,3 +1,5 @@
+// Maps OIDC provider identities to application accounts.
+
 package com.honey.jobfetcher.service;
 
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;

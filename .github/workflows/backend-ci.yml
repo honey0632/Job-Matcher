@@ -1,3 +1,5 @@
+# Validates backend changes with the project test suite.
+
 name: Backend CI
 
 on:

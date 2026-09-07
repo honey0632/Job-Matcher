@@ -1,3 +1,5 @@
+// Verifies that the Spring application context starts successfully.
+
 package com.honey.jobfetcher;
 
 import org.junit.jupiter.api.Test;

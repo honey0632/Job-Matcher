@@ -1,3 +1,5 @@
+# Validates frontend changes by installing dependencies and building the app.
+
 name: Frontend CI
 
 on:

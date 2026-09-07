@@ -1,3 +1,5 @@
+// Provides authentication and CSRF endpoints for the frontend.
+
 package com.honey.jobfetcher.controller;
 
 import com.honey.jobfetcher.dto.UserResponse;

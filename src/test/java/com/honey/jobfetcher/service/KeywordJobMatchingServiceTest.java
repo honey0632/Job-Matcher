@@ -1,3 +1,5 @@
+// Verifies local keyword-based resume matching behavior.
+
 package com.honey.jobfetcher.service;
 
 import com.honey.jobfetcher.model.Jobs;
@@ -27,6 +29,7 @@ class KeywordJobMatchingServiceTest {
 
     @Test
     void ranksJobsByKeywordOverlap() {
+        // Both jobs are in the requested country; only the relevant job should score.
         Resume resume = new Resume();
         resume.setExtractedText("Java Spring PostgreSQL backend engineer");
 

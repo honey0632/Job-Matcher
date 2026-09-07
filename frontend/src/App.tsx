@@ -1,3 +1,5 @@
+// Defines the main application views and user workflows.
+
 import { FormEvent, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { api, Match, Preferences, User } from './api'

@@ -1,3 +1,5 @@
+// Models a job listing persisted and returned by the application.
+
 package com.honey.jobfetcher.model;
 
 import jakarta.persistence.*;

@@ -1,3 +1,5 @@
+// Models a user resume and its extracted text.
+
 package com.honey.jobfetcher.model;
 
 import jakarta.persistence.Entity;
