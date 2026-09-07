@@ -10,6 +10,7 @@ public record JobMatchResponse(
         String title,
         String company,
         String location,
+        String description,
         String jobUrl,
         int score
 ) {
@@ -20,6 +21,7 @@ public record JobMatchResponse(
                 job.getTitle(),
                 job.getCompany(),
                 job.getLocation(),
+                job.getDescription(),
                 job.getJobUrl(),
                 score
         );

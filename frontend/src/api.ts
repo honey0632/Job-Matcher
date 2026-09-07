@@ -86,6 +86,7 @@ export type Match = {
   title?: string
   company?: string
   location?: string
+  description?: string
   jobUrl?: string
   score?: number
 }
