@@ -5,6 +5,7 @@ data/resumes/
 .env.*
 !.env.example
 !.env.oracle.example
+HANDOFF.md
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
