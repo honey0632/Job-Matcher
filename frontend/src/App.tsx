@@ -240,7 +240,7 @@ function Search({ preferences }: { preferences: Preferences }) {
     <section>
       <p className="eyebrow">DISCOVER</p>
       <h1>Search job matches.</h1>
-      <p className="muted">Testing mode: matches above -1% are shown.</p>
+      <p className="muted">Matches above 80% are shown.</p>
       <form className="searchbar" onSubmit={submit}>
         <button className="button primary">{loading ? 'Searching…' : 'Search jobs'}</button>
       </form>
@@ -260,7 +260,7 @@ function Matches() {
   return (
     <section>
       <p className="eyebrow">RECOMMENDED</p>
-      <h1>Your matches above -1%.</h1>
+      <h1>Your matches above 80%.</h1>
       {loading ? <p className="muted">Loading matches…</p> : <JobList jobs={matches} empty="Upload a resume and run a search to see matches." />}
     </section>
   )
