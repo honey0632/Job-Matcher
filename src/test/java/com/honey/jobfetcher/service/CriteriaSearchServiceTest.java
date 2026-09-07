@@ -33,9 +33,9 @@ class CriteriaSearchServiceTest {
     private ResumeRepository resumeRepository;
 
     @Test
-    void returnsAllMatchesAboveNegativeOnePercent() {
-        // The test confirms that the temporary testing threshold includes all
-        // scores above -1 while preserving the requested search location.
+    void returnsMatchesAboveZeroPercent() {
+        // The test confirms that zero-score matches are excluded while the
+        // requested search location is preserved.
         User user = new User();
         user.setId(7L);
 
@@ -60,7 +60,7 @@ class CriteriaSearchServiceTest {
                 new JobSearchRequest("India", 3, "Backend Engineer")
         );
 
-        assertEquals(2, results.size());
+        assertEquals(1, results.size());
         assertEquals("high", results.get(0).externalId());
         verify(jobsService).fetchAndSaveGoogleJobs(anyString());
     }
