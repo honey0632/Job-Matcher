@@ -56,7 +56,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(criteria),
     }),
-  matches: () => request<Match[]>('/api/jobs/matches?threshold=80'),
+  matches: () => request<Match[]>('/api/jobs/matches?threshold=20'),
 }
 
 export type User = {

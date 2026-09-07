@@ -237,8 +237,8 @@ function Search({ preferences }: { preferences: Preferences }) {
   return (
     <section>
       <p className="eyebrow">DISCOVER</p>
-      <h1>Search high-confidence matches.</h1>
-      <p className="muted">Searches use your country, experience, and desired role. Only scores above 80% are shown.</p>
+      <h1>Search job matches.</h1>
+      <p className="muted">Searches use your country, experience, and desired role. Only scores above 20% are shown.</p>
       <form className="searchbar" onSubmit={submit}>
         <button className="button primary">{loading ? 'Searching…' : 'Search jobs'}</button>
       </form>
@@ -258,7 +258,7 @@ function Matches() {
   return (
     <section>
       <p className="eyebrow">RECOMMENDED</p>
-      <h1>Your 80%+ matches.</h1>
+      <h1>Your 20%+ matches.</h1>
       {loading ? <p className="muted">Loading matches…</p> : <JobList jobs={matches} empty="Upload a resume and run a search to see matches." />}
     </section>
   )

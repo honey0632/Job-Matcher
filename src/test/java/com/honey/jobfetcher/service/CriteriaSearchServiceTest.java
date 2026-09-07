@@ -31,7 +31,7 @@ class CriteriaSearchServiceTest {
     private ResumeRepository resumeRepository;
 
     @Test
-    void returnsOnlyMatchesAboveEightyPercent() {
+    void returnsOnlyMatchesAboveTwentyPercent() {
         User user = new User();
         user.setId(7L);
 
@@ -41,8 +41,8 @@ class CriteriaSearchServiceTest {
         when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
                 .thenReturn(Optional.of(resume));
         when(jobMatchingService.findMatches(11L, 100)).thenReturn(List.of(
-                new JobMatchResponse(1L, "high", "High", "Google", "India", "url", 81),
-                new JobMatchResponse(2L, "low", "Low", "Google", "India", "url", 80)
+                new JobMatchResponse(1L, "high", "High", "Google", "India", "url", 21),
+                new JobMatchResponse(2L, "low", "Low", "Google", "India", "url", 20)
         ));
 
         CriteriaSearchService service = new CriteriaSearchService(

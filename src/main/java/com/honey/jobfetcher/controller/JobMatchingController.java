@@ -36,7 +36,7 @@ public class JobMatchingController {
     @GetMapping("/matches")
     public List<JobMatchResponse> findMatches(
             Authentication authentication,
-            @RequestParam(defaultValue = "80") int threshold,
+            @RequestParam(defaultValue = "20") int threshold,
             @RequestParam(defaultValue = "20") int limit
     ) {
         if (threshold < 0 || threshold > 100) {
