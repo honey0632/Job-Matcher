@@ -37,7 +37,8 @@ public class JobMatchingController {
     public List<JobMatchResponse> findMatches(
             Authentication authentication,
             @RequestParam(defaultValue = "-1") int threshold,
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "") String location
     ) {
         if (threshold < -100 || threshold > 100) {
             throw new IllegalArgumentException("Threshold must be between -100 and 100");
@@ -50,7 +51,7 @@ public class JobMatchingController {
                         "Upload and extract a resume before requesting matches"
                 ));
 
-        return jobMatchingService.findMatches(resume.getId(), limit)
+        return jobMatchingService.findMatches(resume.getId(), limit, location)
                 .stream()
                 .filter(match -> match.score() > threshold)
                 .toList();

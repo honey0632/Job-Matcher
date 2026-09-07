@@ -7,6 +7,7 @@ import com.honey.jobfetcher.model.Resume;
 import com.honey.jobfetcher.repository.JobsRepository;
 import com.honey.jobfetcher.repository.ResumeRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -16,6 +17,7 @@ import java.util.Locale;
 import java.util.Set;
 
 @Service
+@ConditionalOnProperty(name = "app.matching.provider", havingValue = "keyword", matchIfMissing = true)
 public class KeywordJobMatchingService implements JobMatchingService {
 
     private static final Set<String> STOP_WORDS = Set.of(
@@ -35,7 +37,7 @@ public class KeywordJobMatchingService implements JobMatchingService {
     }
 
     @Override
-    public List<JobMatchResponse> findMatches(Long resumeId, int limit) {
+    public List<JobMatchResponse> findMatches(Long resumeId, int limit, String location) {
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("Match limit must be between 1 and 100");
         }
@@ -51,11 +53,28 @@ public class KeywordJobMatchingService implements JobMatchingService {
         }
 
         return jobsRepository.findAll().stream()
+                .filter(job -> matchesLocation(job, location))
                 .map(job -> match(job, resumeWords))
                 .filter(match -> match.score() > 0)
                 .sorted(Comparator.comparingInt(JobMatchResponse::score).reversed())
                 .limit(limit)
                 .toList();
+    }
+
+    private boolean matchesLocation(Jobs job, String location) {
+        if (location == null || location.isBlank()) {
+            return true;
+        }
+
+        String jobLocation = job.getLocation();
+        if (jobLocation == null || jobLocation.isBlank()) {
+            return false;
+        }
+
+        String requestedLocation = location.trim().toLowerCase(Locale.ROOT);
+        String normalizedJobLocation = jobLocation.toLowerCase(Locale.ROOT);
+        return normalizedJobLocation.contains(requestedLocation)
+                || normalizedJobLocation.contains("remote");
     }
 
     private JobMatchResponse match(Jobs job, Set<String> resumeWords) {

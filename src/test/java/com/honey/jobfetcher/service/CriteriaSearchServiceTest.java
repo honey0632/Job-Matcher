@@ -40,7 +40,7 @@ class CriteriaSearchServiceTest {
 
         when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
                 .thenReturn(Optional.of(resume));
-        when(jobMatchingService.findMatches(11L, 100)).thenReturn(List.of(
+        when(jobMatchingService.findMatches(11L, 100, "India")).thenReturn(List.of(
                 new JobMatchResponse(1L, "high", "High", "Google", "India", "url", 1),
                 new JobMatchResponse(2L, "low", "Low", "Google", "India", "url", 0)
         ));

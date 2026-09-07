@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface JobMatchingService {
 
-    List<JobMatchResponse> findMatches(Long resumeId, int limit);
+    List<JobMatchResponse> findMatches(Long resumeId, int limit, String location);
 }

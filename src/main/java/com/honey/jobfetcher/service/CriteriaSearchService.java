@@ -43,7 +43,7 @@ public class CriteriaSearchService {
                         "Upload and extract a resume before searching for matches"
                 ));
 
-        return jobMatchingService.findMatches(resume.getId(), MAX_RESULTS)
+        return jobMatchingService.findMatches(resume.getId(), MAX_RESULTS, request.country())
                 .stream()
                 .filter(match -> match.score() > MATCH_THRESHOLD)
                 .toList();

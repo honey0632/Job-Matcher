@@ -36,6 +36,7 @@ class KeywordJobMatchingServiceTest {
         matchingJob.setTitle("Java Spring Backend Engineer");
         matchingJob.setDescription("Build PostgreSQL services");
         matchingJob.setCompany("Google");
+        matchingJob.setLocation("India");
 
         Jobs unrelatedJob = new Jobs();
         unrelatedJob.setId(2L);
@@ -43,6 +44,7 @@ class KeywordJobMatchingServiceTest {
         unrelatedJob.setTitle("UX Designer");
         unrelatedJob.setDescription("Design user experiences");
         unrelatedJob.setCompany("Google");
+        unrelatedJob.setLocation("India");
 
         when(resumeRepository.findById(1L)).thenReturn(Optional.of(resume));
         when(jobsRepository.findAll()).thenReturn(List.of(unrelatedJob, matchingJob));
@@ -52,7 +54,7 @@ class KeywordJobMatchingServiceTest {
                 jobsRepository
         );
 
-        var matches = service.findMatches(1L, 10);
+        var matches = service.findMatches(1L, 10, "India");
 
         assertEquals(1, matches.size());
         assertEquals("job-1", matches.get(0).externalId());

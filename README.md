@@ -272,6 +272,29 @@ The production stack also includes Caddy. It serves HTTPS for `jobmatcher.in` an
 
 The frontend image receives `VITE_API_BASE_URL` during the GitHub Actions build. Set the corresponding GitHub repository variable before publishing production images. Runtime secrets such as database credentials and OAuth secrets belong only in the server's `.env`.
 
+### Matching provider and location filtering
+
+Search filtering uses the requested country against each job's parsed location.
+Jobs marked as remote are also included. Matching is configurable:
+
+```text
+MATCHING_PROVIDER=keyword
+```
+
+For Gemini matching, configure the server environment with:
+
+```text
+MATCHING_PROVIDER=gemini
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+Gemini scores the resume against up to 25 location-filtered jobs at a time.
+The API key is used only by the backend and must never be committed or exposed
+to the frontend. If Gemini is enabled without `GEMINI_API_KEY`, the backend
+returns an explicit configuration error rather than silently using another
+matcher.
+
 ## Project structure
 
 ```text
