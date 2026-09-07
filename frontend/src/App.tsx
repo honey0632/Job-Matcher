@@ -267,6 +267,8 @@ function Matches() {
 }
 
 function JobList({ jobs, empty }: { jobs: Match[]; empty: string }) {
+  const [descriptionJobId, setDescriptionJobId] = useState<number | string>()
+
   if (!jobs.length) return <div className="card empty">{empty}</div>
 
   return (
@@ -277,9 +279,35 @@ function JobList({ jobs, empty }: { jobs: Match[]; empty: string }) {
             <h3>{job.title || 'Untitled role'}</h3>
             <p>{job.company || 'Company'} · {job.location || 'Location'}</p>
           </div>
-          <div>
+          <div className="job-actions">
             <strong>{job.score}% match</strong>
-            {job.jobUrl && <a href={job.jobUrl} target="_blank" rel="noreferrer">View role ↗</a>}
+            <div className="job-buttons">
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setDescriptionJobId(
+                  descriptionJobId === (job.jobId ?? job.externalId) ? undefined : (job.jobId ?? job.externalId)
+                )}
+              >
+                Job Description
+              </button>
+              {job.jobUrl && (
+                <>
+                  {/* The source currently provides one portal URL for both actions. */}
+                  <a className="button secondary" href={job.jobUrl} target="_blank" rel="noreferrer">
+                    View on Job Portal ↗
+                  </a>
+                  <a className="button primary" href={job.jobUrl} target="_blank" rel="noreferrer">
+                    Apply Now ↗
+                  </a>
+                </>
+              )}
+            </div>
+            {descriptionJobId === (job.jobId ?? job.externalId) && (
+              <p className="job-description">
+                {job.description || 'No job description is available.'}
+              </p>
+            )}
           </div>
         </article>
       ))}
