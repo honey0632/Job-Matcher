@@ -210,11 +210,24 @@ docker build -t job-fetcher-backend .
 docker build --build-arg VITE_API_BASE_URL=http://localhost:8080 -t job-fetcher-frontend frontend
 ```
 
-The GitHub Actions workflow at `.github/workflows/ci-cd.yml`:
+GitHub Actions uses independent backend and frontend pipelines:
 
-1. Starts a PostgreSQL service for backend tests.
-2. Runs backend tests and the frontend production build.
-3. On pushes to `main`, publishes both images to GitHub Container Registry.
+- `.github/workflows/backend-ci.yml` runs backend tests when backend files change.
+- `.github/workflows/frontend-ci.yml` builds the frontend when frontend files change.
+- `.github/workflows/backend-cd.yml` publishes and deploys only the backend image.
+- `.github/workflows/frontend-cd.yml` publishes and deploys only the frontend image.
+
+The CD workflows deploy the immutable `sha-<commit>` image tag and restart only
+the changed Compose service. They require these repository secrets:
+
+```text
+JOBMATCHER_PRODUCTION_HOST
+JOBMATCHER_PRODUCTION_USER
+JOBMATCHER_PRODUCTION_SSH_KEY
+```
+
+The production server must already be authenticated to GHCR, and the repository
+variable `JOBMATCHER_VITE_API_BASE_URL` must be set before publishing the frontend image.
 
 The published images target both `linux/amd64` and `linux/arm64`, so they run on Oracle Cloud `VM.Standard.A1.Flex` instances.
 

@@ -1,0 +1,64 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'mvnw'
+      - '.mvn/**'
+      - 'Dockerfile'
+      - '.github/workflows/backend-ci.yml'
+      - '.github/workflows/backend-cd.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'mvnw'
+      - '.mvn/**'
+      - 'Dockerfile'
+      - '.github/workflows/backend-ci.yml'
+      - '.github/workflows/backend-cd.yml'
+
+jobs:
+  test:
+    name: Test backend
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: jdbc:postgresql://localhost:5432/jobfetcher
+      DATABASE_USERNAME: jobfetcher
+      DATABASE_PASSWORD: jobfetcher
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jobfetcher
+          POSTGRES_USER: jobfetcher
+          POSTGRES_PASSWORD: jobfetcher
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U jobfetcher -d jobfetcher"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
+
+      - name: Run backend tests
+        run: ./mvnw -B test
