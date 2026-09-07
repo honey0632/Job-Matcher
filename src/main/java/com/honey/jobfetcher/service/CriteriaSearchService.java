@@ -13,7 +13,7 @@ import java.util.List;
 @Service
 public class CriteriaSearchService {
 
-    private static final int MATCH_THRESHOLD = 20;
+    private static final int MATCH_THRESHOLD = -1;
     private static final int MAX_RESULTS = 100;
 
     private final JobsService jobsService;

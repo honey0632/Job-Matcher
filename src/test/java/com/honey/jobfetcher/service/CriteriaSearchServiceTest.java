@@ -31,7 +31,7 @@ class CriteriaSearchServiceTest {
     private ResumeRepository resumeRepository;
 
     @Test
-    void returnsOnlyMatchesAboveTwentyPercent() {
+    void returnsAllMatchesAboveNegativeOnePercent() {
         User user = new User();
         user.setId(7L);
 
@@ -41,8 +41,8 @@ class CriteriaSearchServiceTest {
         when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
                 .thenReturn(Optional.of(resume));
         when(jobMatchingService.findMatches(11L, 100)).thenReturn(List.of(
-                new JobMatchResponse(1L, "high", "High", "Google", "India", "url", 21),
-                new JobMatchResponse(2L, "low", "Low", "Google", "India", "url", 20)
+                new JobMatchResponse(1L, "high", "High", "Google", "India", "url", 1),
+                new JobMatchResponse(2L, "low", "Low", "Google", "India", "url", 0)
         ));
 
         CriteriaSearchService service = new CriteriaSearchService(
@@ -56,7 +56,7 @@ class CriteriaSearchServiceTest {
                 new JobSearchRequest("India", 3, "Backend Engineer")
         );
 
-        assertEquals(1, results.size());
+        assertEquals(2, results.size());
         assertEquals("high", results.get(0).externalId());
         verify(jobsService).fetchAndSaveGoogleJobs(anyString());
     }
