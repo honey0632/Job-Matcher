@@ -38,13 +38,13 @@ public class JobMatchingController {
     @GetMapping("/matches")
     public List<JobMatchResponse> findMatches(
             Authentication authentication,
-            @RequestParam(defaultValue = "0") int threshold,
+            @RequestParam(defaultValue = "-1") int threshold,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "") String location
     ) {
         // Validate the caller-provided threshold before querying the authenticated resume.
-        if (threshold < 0 || threshold > 100) {
-            throw new IllegalArgumentException("Threshold must be between 0 and 100");
+        if (threshold < -100 || threshold > 100) {
+            throw new IllegalArgumentException("Threshold must be between -100 and 100");
         }
 
         User user = authenticatedUserService.requireUser(authentication);

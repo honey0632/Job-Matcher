@@ -33,8 +33,8 @@ class CriteriaSearchServiceTest {
     private ResumeRepository resumeRepository;
 
     @Test
-    void returnsMatchesAboveZeroPercent() {
-        // The test confirms that zero-score matches are excluded while the
+    void returnsMatchesAboveNegativeOnePercent() {
+        // The test confirms that zero-score matches are included while the
         // requested search location is preserved.
         User user = new User();
         user.setId(7L);
@@ -60,7 +60,7 @@ class CriteriaSearchServiceTest {
                 new JobSearchRequest("India", 3, "Backend Engineer")
         );
 
-        assertEquals(1, results.size());
+        assertEquals(2, results.size());
         assertEquals("high", results.get(0).externalId());
         verify(jobsService).fetchAndSaveGoogleJobs(anyString());
     }
