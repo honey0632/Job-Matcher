@@ -62,6 +62,6 @@ class CriteriaSearchServiceTest {
 
         assertEquals(1, results.size());
         assertEquals("high", results.get(0).externalId());
-        verify(jobsService).fetchAndSaveGoogleJobs(anyString());
+        verify(jobsService).fetchAndSaveApprovedJobs(anyString());
     }
 }

@@ -38,7 +38,7 @@ public class CriteriaSearchService {
                 + " " + request.country().trim()
                 + " " + request.experienceYears() + " years experience";
 
-        jobsService.fetchAndSaveGoogleJobs(query);
+        jobsService.fetchAndSaveApprovedJobs(query);
 
         Resume resume = resumeRepository
                 .findTopByUserIdAndStatusOrderByUploadedAtDesc(user.getId(), "EXTRACTED")

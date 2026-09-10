@@ -5,37 +5,73 @@ package com.honey.jobfetcher.service;
 import com.honey.jobfetcher.client.GoogleCareersClient;
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.parser.GoogleCareersParser;
+import com.honey.jobfetcher.provider.ApprovedJobSourcesProperties;
+import com.honey.jobfetcher.provider.GoogleCareersJobProvider;
+import com.honey.jobfetcher.provider.JobProvider;
+import com.honey.jobfetcher.provider.JobSource;
 import com.honey.jobfetcher.repository.JobsRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class JobsService {
 
     private final JobsRepository jobsRepository;
-    private final GoogleCareersClient googleCareersClient;
-    private final GoogleCareersParser googleCareersParser;
+    private final Map<JobSource, JobProvider> providers;
+    private final ApprovedJobSourcesProperties approvedJobSources;
 
+    @Autowired
+    public JobsService(
+            JobsRepository jobsRepository,
+            List<JobProvider> providers,
+            ApprovedJobSourcesProperties approvedJobSources
+    ) {
+        this.jobsRepository = jobsRepository;
+        this.providers = indexProviders(providers);
+        this.approvedJobSources = approvedJobSources;
+    }
+
+    /**
+     * Retains the original unit-test construction path while Google is adapted
+     * to the provider abstraction used by the application.
+     */
+    @Deprecated(forRemoval = false)
     public JobsService(
             JobsRepository jobsRepository,
             GoogleCareersClient googleCareersClient,
             GoogleCareersParser googleCareersParser
     ) {
-        this.jobsRepository = jobsRepository;
-        this.googleCareersClient = googleCareersClient;
-        this.googleCareersParser = googleCareersParser;
+        this(
+                jobsRepository,
+                List.of(new GoogleCareersJobProvider(googleCareersClient, googleCareersParser)),
+                new ApprovedJobSourcesProperties()
+        );
     }
 
     public List<Jobs> fetchAndSaveGoogleJobs(String query) {
-        String html = googleCareersClient.fetchSearchPage(query);
-        List<Jobs> fetchedJobs = googleCareersParser.parse(html);
-        LocalDateTime now = LocalDateTime.now();
+        return fetchAndSave(providerFor(JobSource.GOOGLE_CAREERS), query);
+    }
 
-        return fetchedJobs.stream()
-                .map(job -> upsertJob(job, now))
-                .toList();
+    /**
+     * Fetches every configured approved provider sequentially and persists
+     * results. A failing provider aborts this operation with its source named.
+     */
+    public List<Jobs> fetchAndSaveApprovedJobs(String query) {
+        List<Jobs> savedJobs = new ArrayList<>();
+        for (JobSource source : approvedJobSources.enabledSources()) {
+            try {
+                savedJobs.addAll(fetchAndSave(providerFor(source), query));
+            } catch (RuntimeException exception) {
+                throw new IllegalStateException("Failed to fetch " + source + " jobs", exception);
+            }
+        }
+        return List.copyOf(savedJobs);
     }
 
     public List<Jobs> getAllJobs(){
@@ -51,6 +87,31 @@ public class JobsService {
 
     public Jobs saveJob(Jobs job){
         return jobsRepository.save(job);
+    }
+
+    private List<Jobs> fetchAndSave(JobProvider provider, String query) {
+        LocalDateTime now = LocalDateTime.now();
+        return provider.fetchJobs(query).stream()
+                .map(job -> upsertJob(job, now))
+                .toList();
+    }
+
+    private JobProvider providerFor(JobSource source) {
+        JobProvider provider = providers.get(source);
+        if (provider == null) {
+            throw new IllegalStateException("No job provider is configured for " + source);
+        }
+        return provider;
+    }
+
+    private Map<JobSource, JobProvider> indexProviders(List<JobProvider> providers) {
+        Map<JobSource, JobProvider> indexed = new EnumMap<>(JobSource.class);
+        for (JobProvider provider : providers) {
+            if (indexed.putIfAbsent(provider.source(), provider) != null) {
+                throw new IllegalStateException("Multiple job providers are configured for " + provider.source());
+            }
+        }
+        return Map.copyOf(indexed);
     }
 
     private Jobs upsertJob(Jobs fetchedJob, LocalDateTime now) {

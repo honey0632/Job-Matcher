@@ -21,6 +21,8 @@ import java.util.List;
 @RequestMapping("/api/jobs")
 public class JobMatchingController {
 
+    private static final int MATCH_THRESHOLD = 80;
+
     private final JobMatchingService jobMatchingService;
     private final AuthenticatedUserService authenticatedUserService;
     private final ResumeRepository resumeRepository;
@@ -38,15 +40,9 @@ public class JobMatchingController {
     @GetMapping("/matches")
     public List<JobMatchResponse> findMatches(
             Authentication authentication,
-            @RequestParam(defaultValue = "80") int threshold,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "") String location
     ) {
-        // Validate the caller-provided threshold before querying the authenticated resume.
-        if (threshold < -100 || threshold > 100) {
-            throw new IllegalArgumentException("Threshold must be between -100 and 100");
-        }
-
         User user = authenticatedUserService.requireUser(authentication);
         Resume resume = resumeRepository
                 .findTopByUserIdAndStatusOrderByUploadedAtDesc(user.getId(), "EXTRACTED")
@@ -56,7 +52,7 @@ public class JobMatchingController {
 
         return jobMatchingService.findMatches(resume.getId(), limit, location)
                 .stream()
-                .filter(match -> match.score() > threshold)
+                .filter(match -> match.score() > MATCH_THRESHOLD)
                 .toList();
     }
 }

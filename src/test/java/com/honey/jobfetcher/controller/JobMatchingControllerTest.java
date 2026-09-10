@@ -1,0 +1,52 @@
+package com.honey.jobfetcher.controller;
+
+import com.honey.jobfetcher.dto.JobMatchResponse;
+import com.honey.jobfetcher.model.Resume;
+import com.honey.jobfetcher.model.User;
+import com.honey.jobfetcher.repository.ResumeRepository;
+import com.honey.jobfetcher.service.AuthenticatedUserService;
+import com.honey.jobfetcher.service.JobMatchingService;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.core.Authentication;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class JobMatchingControllerTest {
+
+    @Test
+    void returnsOnlyMatchesStrictlyAboveEightyPercent() {
+        AuthenticatedUserService authenticatedUserService = mock(AuthenticatedUserService.class);
+        JobMatchingService jobMatchingService = mock(JobMatchingService.class);
+        ResumeRepository resumeRepository = mock(ResumeRepository.class);
+        Authentication authentication = mock(Authentication.class);
+
+        User user = new User();
+        user.setId(7L);
+        Resume resume = new Resume();
+        resume.setId(11L);
+
+        when(authenticatedUserService.requireUser(authentication)).thenReturn(user);
+        when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
+                .thenReturn(Optional.of(resume));
+        when(jobMatchingService.findMatches(11L, 20, "")).thenReturn(List.of(
+                new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 81),
+                new JobMatchResponse(2L, "boundary", "Boundary", "Google", "India", "Description", "url", 80)
+        ));
+
+        JobMatchingController controller = new JobMatchingController(
+                jobMatchingService,
+                authenticatedUserService,
+                resumeRepository
+        );
+
+        List<JobMatchResponse> results = controller.findMatches(authentication, 20, "");
+
+        assertEquals(1, results.size());
+        assertEquals("high", results.getFirst().externalId());
+    }
+}

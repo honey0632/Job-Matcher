@@ -5,6 +5,9 @@ package com.honey.jobfetcher.service;
 import com.honey.jobfetcher.client.GoogleCareersClient;
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.parser.GoogleCareersParser;
+import com.honey.jobfetcher.provider.ApprovedJobSourcesProperties;
+import com.honey.jobfetcher.provider.JobProvider;
+import com.honey.jobfetcher.provider.JobSource;
 import com.honey.jobfetcher.repository.JobsRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,7 +19,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -82,6 +87,49 @@ class JobsServiceTest {
         assertEquals(Jobs.STATUS_APPLIED, existingJob.getStatus());
         verify(jobsRepository).save(existingJob);
         verify(jobsRepository, never()).save(fetchedJob);
+    }
+
+    @Test
+    void savesJobsFromEveryConfiguredApprovedProvider() {
+        JobProvider google = mock(JobProvider.class);
+        JobProvider amazon = mock(JobProvider.class);
+        Jobs googleJob = job("google-1", "Google job");
+        Jobs amazonJob = job("AMAZON:amazon-1", "Amazon job");
+
+        when(google.source()).thenReturn(JobSource.GOOGLE_CAREERS);
+        when(amazon.source()).thenReturn(JobSource.AMAZON);
+        when(google.fetchJobs("java")).thenReturn(List.of(googleJob));
+        when(amazon.fetchJobs("java")).thenReturn(List.of(amazonJob));
+        when(jobsRepository.findByExternalId("google-1")).thenReturn(Optional.empty());
+        when(jobsRepository.findByExternalId("AMAZON:amazon-1")).thenReturn(Optional.empty());
+        when(jobsRepository.save(any(Jobs.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ApprovedJobSourcesProperties sources = new ApprovedJobSourcesProperties();
+        sources.setEnabled(List.of("GOOGLE_CAREERS", "AMAZON"));
+        JobsService service = new JobsService(jobsRepository, List.of(google, amazon), sources);
+
+        List<Jobs> saved = service.fetchAndSaveApprovedJobs("java");
+
+        assertEquals(List.of(googleJob, amazonJob), saved);
+        verify(google).fetchJobs("java");
+        verify(amazon).fetchJobs("java");
+    }
+
+    @Test
+    void identifiesTheFailingApprovedProvider() {
+        JobProvider amazon = mock(JobProvider.class);
+        when(amazon.source()).thenReturn(JobSource.AMAZON);
+        when(amazon.fetchJobs("java")).thenThrow(new IllegalStateException("upstream timeout"));
+        ApprovedJobSourcesProperties sources = new ApprovedJobSourcesProperties();
+        sources.setEnabled(List.of("AMAZON"));
+        JobsService service = new JobsService(jobsRepository, List.of(amazon), sources);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> service.fetchAndSaveApprovedJobs("java")
+        );
+
+        assertEquals("Failed to fetch AMAZON jobs", exception.getMessage());
     }
 
     private Jobs job(String externalId, String title) {

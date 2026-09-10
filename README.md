@@ -46,7 +46,8 @@ http://localhost:8080
 
 ## Job API
 
-Fetch and persist Google Careers results:
+Fetch and persist Google Careers results (the compatibility GET endpoint remains
+Google-only):
 
 ```text
 GET /api/jobs/search?query=software%20engineer
@@ -64,7 +65,31 @@ Get one stored job:
 GET /api/jobs/{id}
 ```
 
-Repeated Google Careers searches update existing records by `externalId` instead of creating duplicates.
+Repeated searches update existing records by `externalId` instead of creating duplicates.
+Amazon, Wells Fargo, and NVIDIA records use source-prefixed IDs, so their IDs
+cannot collide with each other or existing Google records.
+
+### Approved job sources
+
+The criteria-search endpoint (`POST /api/jobs/search`) fetches and persists
+each configured approved source before matching the authenticated user's
+resume. By default this includes Google Careers, Amazon, Wells Fargo, and
+NVIDIA:
+
+```text
+JOB_SOURCES_ENABLED=GOOGLE_CAREERS,AMAZON,WELLS_FARGO,NVIDIA
+```
+
+Set `JOB_SOURCES_ENABLED` to a comma-separated subset (for example,
+`GOOGLE_CAREERS,AMAZON`) to limit outbound source work during development.
+Each source uses explicit HTTP timeouts and bounded retrieval. Amazon requests
+at most three sequential 100-result pages; Wells Fargo's XML response is
+locally filtered and size-bounded; NVIDIA fetches only matching public sitemap
+job pages (at most 25). A configured source failure returns an explicit search
+error rather than silently treating it as no results.
+
+Only the public GET feeds/pages documented above are used. No Microsoft or D.
+E. Shaw provider is implemented.
 
 ## Resume API
 
@@ -163,7 +188,7 @@ Content-Type: application/json
 Request authenticated baseline matches:
 
 ```text
-GET /api/jobs/matches?threshold=80&limit=20
+GET /api/jobs/matches?limit=20
 ```
 
 The current implementation uses normalized keyword overlap between extracted resume text and stored job title/description. It is an intentionally replaceable baseline; embeddings and vector search are not enabled yet.
