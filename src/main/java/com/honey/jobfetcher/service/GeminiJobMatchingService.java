@@ -10,6 +10,7 @@ import com.honey.jobfetcher.dto.JobMatchResponse;
 import com.honey.jobfetcher.exception.InvalidResumeException;
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.model.Resume;
+import com.honey.jobfetcher.provider.JobLocationMatcher;
 import com.honey.jobfetcher.repository.JobsRepository;
 import com.honey.jobfetcher.repository.ResumeRepository;
 import org.slf4j.Logger;
@@ -20,10 +21,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -70,6 +73,11 @@ public class GeminiJobMatchingService implements JobMatchingService {
 
     @Override
     public List<JobMatchResponse> findMatches(Long resumeId, int limit, String location) {
+        return findMatches(resumeId, limit, location, null);
+    }
+
+    @Override
+    public List<JobMatchResponse> findMatches(Long resumeId, int limit, String location, String source) {
         // Keep the request bounded so free-tier Gemini usage remains predictable.
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("Match limit must be between 1 and 100");
@@ -85,11 +93,22 @@ public class GeminiJobMatchingService implements JobMatchingService {
                         "Resume not found with id: " + resumeId
                 ));
 
-        List<Jobs> candidates = jobsRepository.findAll().stream()
-                // Location filtering happens before sending job data to Gemini.
-                .filter(job -> matchesLocation(job, location))
-                .limit(MAX_AI_JOBS)
+        List<Jobs> allJobs = jobsRepository.findAll().stream()
+                .sorted(Comparator.comparing(Jobs::getUpdatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Jobs::getId, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
+
+        List<Jobs> candidates;
+        if (source != null && !source.isBlank() && !"ALL".equalsIgnoreCase(source)) {
+            String targetSource = source.trim().toLowerCase(Locale.ROOT);
+            candidates = allJobs.stream()
+                    .filter(job -> matchesSource(job, targetSource))
+                    .filter(job -> JobLocationMatcher.matches(job.getLocation(), location))
+                    .limit(MAX_AI_JOBS)
+                    .toList();
+        } else {
+            candidates = selectBalancedCandidates(allJobs, location, MAX_AI_JOBS);
+        }
 
         if (candidates.isEmpty()) {
             return List.of();
@@ -110,6 +129,52 @@ public class GeminiJobMatchingService implements JobMatchingService {
                 .sorted(Comparator.comparingInt(JobMatchResponse::score).reversed())
                 .limit(limit)
                 .toList();
+    }
+
+    private boolean matchesSource(Jobs job, String targetSource) {
+        if (job.getSource() != null && job.getSource().toLowerCase(Locale.ROOT).contains(targetSource)) {
+            return true;
+        }
+        if (job.getCompany() != null && job.getCompany().toLowerCase(Locale.ROOT).contains(targetSource)) {
+            return true;
+        }
+        if (job.getExternalId() != null && job.getExternalId().toLowerCase(Locale.ROOT).startsWith(targetSource + ":")) {
+            return true;
+        }
+        if ("google_careers".equals(targetSource) || "google".equals(targetSource)) {
+            return job.getCompany() != null && job.getCompany().toLowerCase(Locale.ROOT).contains("google");
+        }
+        if ("wells_fargo".equals(targetSource) || "wells".equals(targetSource)) {
+            return job.getCompany() != null && job.getCompany().toLowerCase(Locale.ROOT).contains("wells");
+        }
+        return false;
+    }
+
+    private List<Jobs> selectBalancedCandidates(List<Jobs> allJobs, String location, int maxCandidates) {
+        List<Jobs> locationMatched = allJobs.stream()
+                .filter(job -> JobLocationMatcher.matches(job.getLocation(), location))
+                .toList();
+
+        Map<String, List<Jobs>> bySource = new LinkedHashMap<>();
+        for (Jobs job : locationMatched) {
+            String src = job.getSource() != null ? job.getSource() : (job.getCompany() != null ? job.getCompany() : "OTHER");
+            bySource.computeIfAbsent(src, k -> new ArrayList<>()).add(job);
+        }
+
+        List<Jobs> selected = new ArrayList<>();
+        int round = 0;
+        boolean addedAny = true;
+        while (selected.size() < maxCandidates && addedAny) {
+            addedAny = false;
+            for (List<Jobs> sourceJobs : bySource.values()) {
+                if (round < sourceJobs.size() && selected.size() < maxCandidates) {
+                    selected.add(sourceJobs.get(round));
+                    addedAny = true;
+                }
+            }
+            round++;
+        }
+        return selected;
     }
 
     private Map<String, Integer> requestScores(Resume resume, List<Jobs> jobs) {
@@ -193,17 +258,7 @@ public class GeminiJobMatchingService implements JobMatchingService {
     }
 
     private boolean matchesLocation(Jobs job, String location) {
-        if (location == null || location.isBlank()) {
-            return true;
-        }
-        String jobLocation = job.getLocation();
-        if (jobLocation == null || jobLocation.isBlank()) {
-            return false;
-        }
-        String requestedLocation = location.trim().toLowerCase(Locale.ROOT);
-        String normalizedJobLocation = jobLocation.toLowerCase(Locale.ROOT);
-        return normalizedJobLocation.contains(requestedLocation)
-                || normalizedJobLocation.contains("remote");
+        return JobLocationMatcher.matches(job.getLocation(), location);
     }
 
     private String truncate(String value, int maxLength) {

@@ -63,4 +63,41 @@ class KeywordJobMatchingServiceTest {
         assertEquals("job-1", matches.get(0).externalId());
         assertTrue(matches.get(0).score() > 0);
     }
+
+    @Test
+    void filtersBySourceAndMatchesCountryCodes() {
+        Resume resume = new Resume();
+        resume.setExtractedText("Java backend software engineer");
+
+        Jobs amazonJob = new Jobs();
+        amazonJob.setId(1L);
+        amazonJob.setExternalId("AMAZON:1");
+        amazonJob.setTitle("Java Software Engineer");
+        amazonJob.setDescription("Java backend development");
+        amazonJob.setCompany("Amazon");
+        amazonJob.setSource("AMAZON");
+        amazonJob.setLocation("Bengaluru, KA, IND");
+
+        Jobs googleJob = new Jobs();
+        googleJob.setId(2L);
+        googleJob.setExternalId("GOOGLE:1");
+        googleJob.setTitle("Java Software Engineer");
+        googleJob.setDescription("Java backend development");
+        googleJob.setCompany("Google");
+        googleJob.setSource("GOOGLE_CAREERS");
+        googleJob.setLocation("Bengaluru, India");
+
+        when(resumeRepository.findById(1L)).thenReturn(Optional.of(resume));
+        when(jobsRepository.findAll()).thenReturn(List.of(googleJob, amazonJob));
+
+        KeywordJobMatchingService service = new KeywordJobMatchingService(
+                resumeRepository,
+                jobsRepository
+        );
+
+        var matches = service.findMatches(1L, 10, "India", "AMAZON");
+
+        assertEquals(1, matches.size());
+        assertEquals("AMAZON:1", matches.get(0).externalId());
+    }
 }

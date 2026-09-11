@@ -44,7 +44,7 @@ class CriteriaSearchServiceTest {
 
         when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
                 .thenReturn(Optional.of(resume));
-        when(jobMatchingService.findMatches(11L, 100, "India")).thenReturn(List.of(
+        when(jobMatchingService.findMatches(11L, 100, "India", null)).thenReturn(List.of(
                 new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 81),
                 new JobMatchResponse(2L, "low", "Low", "Google", "India", "Description", "url", 80)
         ));
@@ -63,5 +63,35 @@ class CriteriaSearchServiceTest {
         assertEquals(1, results.size());
         assertEquals("high", results.get(0).externalId());
         verify(jobsService).fetchAndSaveApprovedJobs(anyString());
+    }
+
+    @Test
+    void forwardsSourceToMatchingServiceAndFiltersTargetSource() {
+        User user = new User();
+        user.setId(7L);
+
+        Resume resume = new Resume();
+        resume.setId(11L);
+
+        when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
+                .thenReturn(Optional.of(resume));
+        when(jobMatchingService.findMatches(11L, 100, "India", "AMAZON")).thenReturn(List.of(
+                new JobMatchResponse(1L, "AMAZON:1", "Amazon Role", "Amazon", "India", "Description", "url", 90),
+                new JobMatchResponse(2L, "GOOGLE:1", "Google Role", "Google", "India", "Description", "url", 95)
+        ));
+
+        CriteriaSearchService service = new CriteriaSearchService(
+                jobsService,
+                jobMatchingService,
+                resumeRepository
+        );
+
+        List<JobMatchResponse> results = service.search(
+                user,
+                new JobSearchRequest("India", 3, "Backend Engineer", "AMAZON")
+        );
+
+        assertEquals(1, results.size());
+        assertEquals("AMAZON:1", results.get(0).externalId());
     }
 }

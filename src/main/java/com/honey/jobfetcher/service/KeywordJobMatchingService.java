@@ -6,6 +6,7 @@ import com.honey.jobfetcher.dto.JobMatchResponse;
 import com.honey.jobfetcher.exception.InvalidResumeException;
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.model.Resume;
+import com.honey.jobfetcher.provider.JobLocationMatcher;
 import com.honey.jobfetcher.repository.JobsRepository;
 import com.honey.jobfetcher.repository.ResumeRepository;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,11 @@ public class KeywordJobMatchingService implements JobMatchingService {
 
     @Override
     public List<JobMatchResponse> findMatches(Long resumeId, int limit, String location) {
+        return findMatches(resumeId, limit, location, null);
+    }
+
+    @Override
+    public List<JobMatchResponse> findMatches(Long resumeId, int limit, String location, String source) {
         // The keyword provider remains available as a local/offline fallback.
         if (limit < 1 || limit > 100) {
             throw new IllegalArgumentException("Match limit must be between 1 and 100");
@@ -56,7 +62,13 @@ public class KeywordJobMatchingService implements JobMatchingService {
         }
 
         return jobsRepository.findAll().stream()
-                .filter(job -> matchesLocation(job, location))
+                .filter(job -> {
+                    if (source == null || source.isBlank() || "ALL".equalsIgnoreCase(source)) {
+                        return true;
+                    }
+                    return matchesSource(job, source.trim().toLowerCase(Locale.ROOT));
+                })
+                .filter(job -> JobLocationMatcher.matches(job.getLocation(), location))
                 .map(job -> match(job, resumeWords))
                 .filter(match -> match.score() > 0)
                 .sorted(Comparator.comparingInt(JobMatchResponse::score).reversed())
@@ -64,21 +76,27 @@ public class KeywordJobMatchingService implements JobMatchingService {
                 .toList();
     }
 
-    private boolean matchesLocation(Jobs job, String location) {
-        // A remote role is considered eligible for any requested country.
-        if (location == null || location.isBlank()) {
+    private boolean matchesSource(Jobs job, String targetSource) {
+        if (job.getSource() != null && job.getSource().toLowerCase(Locale.ROOT).contains(targetSource)) {
             return true;
         }
-
-        String jobLocation = job.getLocation();
-        if (jobLocation == null || jobLocation.isBlank()) {
-            return false;
+        if (job.getCompany() != null && job.getCompany().toLowerCase(Locale.ROOT).contains(targetSource)) {
+            return true;
         }
+        if (job.getExternalId() != null && job.getExternalId().toLowerCase(Locale.ROOT).startsWith(targetSource + ":")) {
+            return true;
+        }
+        if ("google_careers".equals(targetSource) || "google".equals(targetSource)) {
+            return job.getCompany() != null && job.getCompany().toLowerCase(Locale.ROOT).contains("google");
+        }
+        if ("wells_fargo".equals(targetSource) || "wells".equals(targetSource)) {
+            return job.getCompany() != null && job.getCompany().toLowerCase(Locale.ROOT).contains("wells");
+        }
+        return false;
+    }
 
-        String requestedLocation = location.trim().toLowerCase(Locale.ROOT);
-        String normalizedJobLocation = jobLocation.toLowerCase(Locale.ROOT);
-        return normalizedJobLocation.contains(requestedLocation)
-                || normalizedJobLocation.contains("remote");
+    private boolean matchesLocation(Jobs job, String location) {
+        return JobLocationMatcher.matches(job.getLocation(), location);
     }
 
     private JobMatchResponse match(Jobs job, Set<String> resumeWords) {

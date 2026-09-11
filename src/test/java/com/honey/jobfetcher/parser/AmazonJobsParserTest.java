@@ -29,7 +29,7 @@ class AmazonJobsParserTest {
         assertEquals(1, jobs.size());
         Jobs job = jobs.getFirst();
         assertEquals("AMAZON:12345", job.getExternalId());
-        assertEquals("Bengaluru, KA, IND", job.getLocation());
+        assertEquals("Bengaluru, KA, IND, India", job.getLocation());
         assertEquals("Build reliable services.", job.getDescription());
         assertEquals("https://www.amazon.jobs/en/jobs/12345/software-development-engineer", job.getJobUrl());
         assertEquals("Amazon", job.getCompany());

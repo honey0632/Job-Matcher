@@ -55,7 +55,7 @@ public class CriteriaSearchService {
                         "Upload and extract a resume before searching for matches"
                 ));
 
-        List<JobMatchResponse> matches = jobMatchingService.findMatches(resume.getId(), MAX_RESULTS, request.country())
+        List<JobMatchResponse> matches = jobMatchingService.findMatches(resume.getId(), MAX_RESULTS, request.country(), sourceFilter)
                 .stream()
                 .filter(match -> match.score() > MATCH_THRESHOLD)
                 .toList();

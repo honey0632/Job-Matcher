@@ -59,10 +59,19 @@ public class AmazonJobsParser {
             return java.util.Optional.empty();
         }
 
+        String normLoc = value(record.get("normalized_location"));
+        String rawLoc = value(record.get("location"));
+        String loc;
+        if (normLoc != null && rawLoc != null && !normLoc.equalsIgnoreCase(rawLoc)) {
+            loc = normLoc + ", " + rawLoc;
+        } else {
+            loc = firstNonBlank(normLoc, rawLoc);
+        }
+
         Jobs job = new Jobs();
         job.setExternalId(JobSource.AMAZON.name() + ":" + id);
         job.setTitle(title);
-        job.setLocation(firstNonBlank(value(record.get("normalized_location")), value(record.get("location"))));
+        job.setLocation(loc);
         job.setDescription(htmlToText(value(record.get("description"))));
         job.setJobUrl(jobUrl.toString());
         job.setCompany("Amazon");

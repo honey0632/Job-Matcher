@@ -91,11 +91,15 @@ Branch: `main`
     - Added local storage caching for saved jobs alongside server sync to ensure bookmarked jobs never disappear on refresh/re-render.
     - Updated company side panel workflow so only the selected company triggers active search and match scoring.
 
+23. **`src/main/java/com/honey/jobfetcher/provider/JobLocationMatcher.java`** (New File) & **`JobMatchingService.java`**
+    - Added country synonym and token matching (e.g., `IND`/`IN` for India, `US`/`USA` for United States) so Amazon, NVIDIA, and Wells Fargo jobs are not rejected by location filters.
+    - Updated `GeminiJobMatchingService` and `KeywordJobMatchingService` to accept source filtering and select balanced candidates across all sources so non-Google providers are fairly scored and returned.
+
 ### Comprehensive Test Suite
-22. **`src/test/java/com/honey/jobfetcher/service/JobsServiceTest.java`**
+24. **`src/test/java/com/honey/jobfetcher/service/JobsServiceTest.java`**
     - Updated tests including `skipsFailingApprovedProviderAndContinues()` to verify resilient multi-provider behavior when individual sources fail.
 
-23. **New Test Fixtures & Unit Tests:**
+25. **New Test Fixtures & Unit Tests:**
     - `AmazonJobsClientTest.java`
     - `NvidiaJobsClientTest.java`
     - `JobMatchingControllerTest.java`
@@ -104,6 +108,7 @@ Branch: `main`
     - `WellsFargoJobsParserTest.java`
     - `AmazonJobProviderTest.java`
     - `CriteriaSearchServiceTest.java`
+    - `JobLocationMatcherTest.java`
 
 ---
 
