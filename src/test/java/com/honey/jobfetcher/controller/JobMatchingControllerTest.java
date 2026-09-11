@@ -6,6 +6,7 @@ import com.honey.jobfetcher.model.User;
 import com.honey.jobfetcher.repository.ResumeRepository;
 import com.honey.jobfetcher.service.AuthenticatedUserService;
 import com.honey.jobfetcher.service.JobMatchingService;
+import com.honey.jobfetcher.service.SavedJobService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
@@ -23,6 +24,7 @@ class JobMatchingControllerTest {
         AuthenticatedUserService authenticatedUserService = mock(AuthenticatedUserService.class);
         JobMatchingService jobMatchingService = mock(JobMatchingService.class);
         ResumeRepository resumeRepository = mock(ResumeRepository.class);
+        SavedJobService savedJobService = mock(SavedJobService.class);
         Authentication authentication = mock(Authentication.class);
 
         User user = new User();
@@ -41,7 +43,8 @@ class JobMatchingControllerTest {
         JobMatchingController controller = new JobMatchingController(
                 jobMatchingService,
                 authenticatedUserService,
-                resumeRepository
+                resumeRepository,
+                savedJobService
         );
 
         List<JobMatchResponse> results = controller.findMatches(authentication, 20, "");

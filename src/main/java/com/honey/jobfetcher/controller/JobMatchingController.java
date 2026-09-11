@@ -8,6 +8,7 @@ import com.honey.jobfetcher.model.User;
 import com.honey.jobfetcher.repository.ResumeRepository;
 import com.honey.jobfetcher.service.AuthenticatedUserService;
 import com.honey.jobfetcher.service.JobMatchingService;
+import com.honey.jobfetcher.service.SavedJobService;
 import com.honey.jobfetcher.exception.InvalidResumeException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,15 +28,18 @@ public class JobMatchingController {
     private final JobMatchingService jobMatchingService;
     private final AuthenticatedUserService authenticatedUserService;
     private final ResumeRepository resumeRepository;
+    private final SavedJobService savedJobService;
 
     public JobMatchingController(
             JobMatchingService jobMatchingService,
             AuthenticatedUserService authenticatedUserService,
-            ResumeRepository resumeRepository
+            ResumeRepository resumeRepository,
+            SavedJobService savedJobService
     ) {
         this.jobMatchingService = jobMatchingService;
         this.authenticatedUserService = authenticatedUserService;
         this.resumeRepository = resumeRepository;
+        this.savedJobService = savedJobService;
     }
 
     @GetMapping("/matches")
@@ -51,9 +55,13 @@ public class JobMatchingController {
                         "Upload and extract a resume before requesting matches"
                 ));
 
-        return jobMatchingService.findMatches(resume.getId(), limit, location)
+        List<JobMatchResponse> matches = jobMatchingService.findMatches(resume.getId(), limit, location)
                 .stream()
                 .filter(match -> match.score() >= MATCH_THRESHOLD)
                 .toList();
+
+        savedJobService.autoSaveHighMatches(user, matches);
+
+        return matches;
     }
 }

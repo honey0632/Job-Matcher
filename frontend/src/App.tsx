@@ -179,15 +179,140 @@ export default function App() {
 
   if (!user) {
     return (
-      <main className="login-page">
-        <section className="card login-card">
-          <span className="eyebrow">JOB FETCHER</span>
-          <h1>Find work that fits.</h1>
-          <p>Sign in, upload your resume, and discover roles matched to your experience.</p>
-          <a className="button primary" href={`${backendUrl}/oauth2/authorization/google`}>Continue with Google</a>
-          <LegalLinks />
-        </section>
-      </main>
+      <div className="landing-page">
+        <header className="public-navbar">
+          <div className="public-nav-container">
+            <div className="public-brand">
+              <span className="brand-logo">💼</span>
+              <strong>Job Matcher</strong>
+            </div>
+            <nav className="public-nav-links">
+              <a href="#features">Features</a>
+              <a href="#how-it-works">How It Works</a>
+              <a href="#companies">Providers</a>
+              <a href="/privacy-policy">Privacy Policy</a>
+              <a href="/terms-of-service">Terms of Service</a>
+            </nav>
+            <a className="button primary" href={`${backendUrl}/oauth2/authorization/google`}>
+              Sign in with Google
+            </a>
+          </div>
+        </header>
+
+        <main className="landing-content">
+          <section className="hero-section">
+            <span className="eyebrow">AI-POWERED CAREER DISCOVERY</span>
+            <h1>Discover & Match Jobs That Fit Your Resume</h1>
+            <p className="hero-subtitle">
+              Job Matcher analyzes your resume and automatically evaluates live openings from top employers like Google, Amazon, Wells Fargo, and NVIDIA. High-match roles (&gt;70%) are automatically bookmarked for you.
+            </p>
+            <div className="hero-ctas">
+              <a className="button primary hero-btn" href={`${backendUrl}/oauth2/authorization/google`}>
+                Continue with Google
+              </a>
+              <a className="button secondary hero-btn" href="#features">
+                Learn More ↓
+              </a>
+            </div>
+          </section>
+
+          <section id="companies" className="landing-section">
+            <p className="eyebrow">SUPPORTED EMPLOYERS</p>
+            <h2>Search Across Top Tech Employers</h2>
+            <p className="muted">Direct integration with live job portals for real-time opportunity discovery.</p>
+            <div className="landing-company-grid">
+              <div className="landing-company-card">
+                <span className="company-icon">🔵</span>
+                <h3>Google Careers</h3>
+                <p>Global engineering, cloud, AI, and product management opportunities.</p>
+              </div>
+              <div className="landing-company-card">
+                <span className="company-icon">🟧</span>
+                <h3>Amazon Jobs</h3>
+                <p>Software development, AWS infrastructure, operations, and solutions roles.</p>
+              </div>
+              <div className="landing-company-card">
+                <span className="company-icon">🔴</span>
+                <h3>Wells Fargo</h3>
+                <p>Financial technology, cybersecurity, software engineering, and data analytics.</p>
+              </div>
+              <div className="landing-company-card">
+                <span className="company-icon">🟢</span>
+                <h3>NVIDIA Jobs</h3>
+                <p>AI, deep learning, GPU architecture, hardware, and software platforms.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="features" className="landing-section alt-bg">
+            <p className="eyebrow">CORE FEATURES</p>
+            <h2>Everything You Need for Targeted Job Discovery</h2>
+            <div className="features-grid">
+              <div className="feature-card">
+                <div className="feature-icon">📄</div>
+                <h3>AI Resume Parsing</h3>
+                <p>Upload your PDF or DOCX resume. Our parser extracts your key skills, technical stack, and target roles automatically.</p>
+              </div>
+              <div className="feature-card">
+                <div className="feature-icon">🎯</div>
+                <h3>Deep Match Scoring</h3>
+                <p>Using Google Gemini AI, your background is scored against real-time job requirements for precise semantic relevancy.</p>
+              </div>
+              <div className="feature-card">
+                <div className="feature-icon">⭐</div>
+                <h3>Auto-Save Top Matches</h3>
+                <p>Any job matching your resume with a score higher than 70% is automatically bookmarked to your profile for easy tracking.</p>
+              </div>
+              <div className="feature-card">
+                <div className="feature-icon">🌍</div>
+                <h3>Country & Experience Filtering</h3>
+                <p>Filter opportunities by target country and experience level so you only focus on relevant positions.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="how-it-works" className="landing-section">
+            <p className="eyebrow">HOW IT WORKS</p>
+            <h2>Get Started in 3 Simple Steps</h2>
+            <div className="steps-grid">
+              <div className="step-card">
+                <span className="step-number">1</span>
+                <h3>Sign in with Google</h3>
+                <p>Fast, secure login using your existing Google account. No extra passwords needed.</p>
+              </div>
+              <div className="step-card">
+                <span className="step-number">2</span>
+                <h3>Upload Resume & Preferences</h3>
+                <p>Provide your desired role, country, and upload your resume for instant AI analysis.</p>
+              </div>
+              <div className="step-card">
+                <span className="step-number">3</span>
+                <h3>Review & Apply</h3>
+                <p>Explore AI-scored matches, view auto-saved top picks (&gt;70%), and jump directly to official application portals.</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="landing-cta-banner">
+            <h2>Ready to find your next role?</h2>
+            <p>Sign in now with Google and discover matched job opportunities in seconds.</p>
+            <a className="button primary hero-btn" href={`${backendUrl}/oauth2/authorization/google`}>
+              Get Started with Google
+            </a>
+          </section>
+        </main>
+
+        <footer className="public-footer">
+          <div className="public-footer-container">
+            <div className="footer-info">
+              <strong>💼 Job Matcher</strong>
+              <p>AI-powered career matching & job discovery platform.</p>
+            </div>
+            <LegalLinks />
+            <p className="copyright">© 2026 Job Matcher. All rights reserved.</p>
+          </div>
+        </footer>
+      </div>
     )
   }
 
@@ -244,6 +369,7 @@ export default function App() {
               }}
               savedJobIds={savedJobIds}
               onToggleSave={toggleSaveJob}
+              onMatchesLoaded={loadSavedJobs}
             />
           )}
 
@@ -266,6 +392,7 @@ export default function App() {
               setSelectedCompany={setSelectedCompany}
               savedJobIds={savedJobIds}
               onToggleSave={toggleSaveJob}
+              onMatchesLoaded={loadSavedJobs}
             />
           )}
 
@@ -273,6 +400,7 @@ export default function App() {
             <Matches
               savedJobIds={savedJobIds}
               onToggleSave={toggleSaveJob}
+              onMatchesLoaded={loadSavedJobs}
             />
           )}
 
@@ -297,6 +425,7 @@ function Home({
   onSelectCompany,
   savedJobIds,
   onToggleSave,
+  onMatchesLoaded,
 }: {
   user: User
   preferences: Preferences
@@ -305,6 +434,7 @@ function Home({
   onSelectCompany: (companyId: string) => void
   savedJobIds: Set<number>
   onToggleSave: (job: Match) => void
+  onMatchesLoaded?: () => void
 }) {
   const [topMatches, setTopMatches] = useState<Match[]>([])
   const [loadingMatches, setLoadingMatches] = useState(false)
@@ -312,7 +442,10 @@ function Home({
   useEffect(() => {
     setLoadingMatches(true)
     api.matches()
-      .then(res => setTopMatches(res.slice(0, 5)))
+      .then(res => {
+        setTopMatches(res.slice(0, 5))
+        onMatchesLoaded?.()
+      })
       .catch(() => setTopMatches([]))
       .finally(() => setLoadingMatches(false))
   }, [])
@@ -462,12 +595,14 @@ function Search({
   setSelectedCompany,
   savedJobIds,
   onToggleSave,
+  onMatchesLoaded,
 }: {
   preferences: Preferences
   selectedCompany: string
   setSelectedCompany: (company: string) => void
   savedJobIds: Set<number>
   onToggleSave: (job: Match) => void
+  onMatchesLoaded?: () => void
 }) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(false)
@@ -480,7 +615,9 @@ function Search({
         ...preferences,
         source: selectedCompany,
       }
-      setMatches(await api.searchJobs(criteria))
+      const results = await api.searchJobs(criteria)
+      setMatches(results)
+      onMatchesLoaded?.()
     } finally {
       setLoading(false)
     }
@@ -540,15 +677,23 @@ function Search({
 function Matches({
   savedJobIds,
   onToggleSave,
+  onMatchesLoaded,
 }: {
   savedJobIds: Set<number>
   onToggleSave: (job: Match) => void
+  onMatchesLoaded?: () => void
 }) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.matches().then(setMatches).catch(() => setMatches([])).finally(() => setLoading(false))
+    api.matches()
+      .then(res => {
+        setMatches(res)
+        onMatchesLoaded?.()
+      })
+      .catch(() => setMatches([]))
+      .finally(() => setLoading(false))
   }, [])
 
   return (

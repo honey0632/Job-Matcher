@@ -24,15 +24,18 @@ public class CriteriaSearchService {
     private final JobsService jobsService;
     private final JobMatchingService jobMatchingService;
     private final ResumeRepository resumeRepository;
+    private final SavedJobService savedJobService;
 
     public CriteriaSearchService(
             JobsService jobsService,
             JobMatchingService jobMatchingService,
-            ResumeRepository resumeRepository
+            ResumeRepository resumeRepository,
+            SavedJobService savedJobService
     ) {
         this.jobsService = jobsService;
         this.jobMatchingService = jobMatchingService;
         this.resumeRepository = resumeRepository;
+        this.savedJobService = savedJobService;
     }
 
     public List<JobMatchResponse> search(User user, JobSearchRequest request) {
@@ -68,6 +71,8 @@ public class CriteriaSearchService {
                     .filter(m -> matchesSource(m, filter))
                     .toList();
         }
+
+        savedJobService.autoSaveHighMatches(user, matches);
 
         return matches;
     }

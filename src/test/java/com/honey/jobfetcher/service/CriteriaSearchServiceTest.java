@@ -32,9 +32,12 @@ class CriteriaSearchServiceTest {
     @Mock
     private ResumeRepository resumeRepository;
 
+    @Mock
+    private SavedJobService savedJobService;
+
     @Test
-        void returnsMatchesAtOrAboveZeroPercentDuringProviderVerification() {
-                // The 0% threshold keeps source-specific provider results visible.
+    void returnsMatchesAtOrAboveZeroPercentDuringProviderVerification() {
+        // The 0% threshold keeps source-specific provider results visible.
         User user = new User();
         user.setId(7L);
 
@@ -51,7 +54,8 @@ class CriteriaSearchServiceTest {
         CriteriaSearchService service = new CriteriaSearchService(
                 jobsService,
                 jobMatchingService,
-                resumeRepository
+                resumeRepository,
+                savedJobService
         );
 
         List<JobMatchResponse> results = service.search(
@@ -62,6 +66,7 @@ class CriteriaSearchServiceTest {
         assertEquals(2, results.size());
         assertEquals("high", results.get(0).externalId());
         verify(jobsService).fetchAndSaveApprovedJobs(anyString());
+        verify(savedJobService).autoSaveHighMatches(user, results);
     }
 
     @Test
@@ -82,7 +87,8 @@ class CriteriaSearchServiceTest {
         CriteriaSearchService service = new CriteriaSearchService(
                 jobsService,
                 jobMatchingService,
-                resumeRepository
+                resumeRepository,
+                savedJobService
         );
 
         List<JobMatchResponse> results = service.search(
@@ -92,5 +98,6 @@ class CriteriaSearchServiceTest {
 
         assertEquals(1, results.size());
         assertEquals("AMAZON:1", results.get(0).externalId());
+        verify(savedJobService).autoSaveHighMatches(user, results);
     }
 }

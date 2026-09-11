@@ -6,6 +6,8 @@ import com.honey.jobfetcher.model.SavedJob;
 import com.honey.jobfetcher.model.User;
 import com.honey.jobfetcher.repository.JobsRepository;
 import com.honey.jobfetcher.repository.SavedJobRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,8 @@ import java.util.List;
 
 @Service
 public class SavedJobService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SavedJobService.class);
 
     private final SavedJobRepository savedJobRepository;
     private final JobsRepository jobsRepository;
@@ -64,5 +68,21 @@ public class SavedJobService {
     @Transactional
     public void unsaveJob(User user, Long jobId) {
         savedJobRepository.deleteByUserIdAndJobId(user.getId(), jobId);
+    }
+
+    @Transactional
+    public void autoSaveHighMatches(User user, List<JobMatchResponse> matches) {
+        if (user == null || matches == null || matches.isEmpty()) {
+            return;
+        }
+        for (JobMatchResponse match : matches) {
+            if (match.jobId() != null && match.score() >= 70) {
+                try {
+                    saveJob(user, match.jobId(), match.score());
+                } catch (Exception exception) {
+                    logger.warn("Failed to auto-save match jobId={}: {}", match.jobId(), exception.getMessage());
+                }
+            }
+        }
     }
 }
