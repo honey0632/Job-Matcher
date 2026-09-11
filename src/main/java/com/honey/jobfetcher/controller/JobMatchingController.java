@@ -22,8 +22,8 @@ import java.util.List;
 @RequestMapping("/api/jobs")
 public class JobMatchingController {
 
-        // A 0% threshold exposes every result returned by the matching provider.
-    private static final int MATCH_THRESHOLD = 0;
+    // Only return matches with a score of 60% or higher.
+    private static final int MATCH_THRESHOLD = 60;
 
     private final JobMatchingService jobMatchingService;
     private final AuthenticatedUserService authenticatedUserService;

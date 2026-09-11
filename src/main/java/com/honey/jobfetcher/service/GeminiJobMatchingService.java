@@ -125,7 +125,7 @@ public class GeminiJobMatchingService implements JobMatchingService {
         final Map<String, Integer> matchScores = scores;
         return candidates.stream()
                 .map(job -> JobMatchResponse.from(job, matchScores.getOrDefault(job.getExternalId(), 0)))
-                .filter(match -> match.score() >= 0)
+                .filter(match -> match.score() >= 60)
                 .sorted(Comparator.comparingInt(JobMatchResponse::score).reversed())
                 .limit(limit)
                 .toList();

@@ -76,7 +76,7 @@ public class SavedJobService {
             return;
         }
         for (JobMatchResponse match : matches) {
-            if (match.jobId() != null && match.score() >= 70) {
+            if (match.jobId() != null && match.score() > 80) {
                 try {
                     saveJob(user, match.jobId(), match.score());
                 } catch (Exception exception) {

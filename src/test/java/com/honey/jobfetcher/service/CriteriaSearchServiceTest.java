@@ -36,8 +36,7 @@ class CriteriaSearchServiceTest {
     private SavedJobService savedJobService;
 
     @Test
-    void returnsMatchesAtOrAboveZeroPercentDuringProviderVerification() {
-        // The 0% threshold keeps source-specific provider results visible.
+    void returnsMatchesAtOrAboveSixtyPercent() {
         User user = new User();
         user.setId(7L);
 
@@ -47,8 +46,9 @@ class CriteriaSearchServiceTest {
         when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
                 .thenReturn(Optional.of(resume));
         when(jobMatchingService.findMatches(11L, 100, "India", null)).thenReturn(List.of(
-                new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 1),
-                new JobMatchResponse(2L, "low", "Low", "Google", "India", "Description", "url", 0)
+                new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 85),
+                new JobMatchResponse(2L, "mid", "Mid", "Google", "India", "Description", "url", 60),
+                new JobMatchResponse(3L, "low", "Low", "Google", "India", "Description", "url", 55)
         ));
 
         CriteriaSearchService service = new CriteriaSearchService(
@@ -65,6 +65,7 @@ class CriteriaSearchServiceTest {
 
         assertEquals(2, results.size());
         assertEquals("high", results.get(0).externalId());
+        assertEquals("mid", results.get(1).externalId());
         verify(jobsService).fetchAndSaveApprovedJobs(anyString());
         verify(savedJobService).autoSaveHighMatches(user, results);
     }

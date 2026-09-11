@@ -70,7 +70,7 @@ public class KeywordJobMatchingService implements JobMatchingService {
                 })
                 .filter(job -> JobLocationMatcher.matches(job.getLocation(), location))
                 .map(job -> match(job, resumeWords))
-                .filter(match -> match.score() >= 0)
+                .filter(match -> match.score() >= 60)
                 .sorted(Comparator.comparingInt(JobMatchResponse::score).reversed())
                 .limit(limit)
                 .toList();

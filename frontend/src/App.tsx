@@ -204,7 +204,7 @@ export default function App() {
             <span className="eyebrow">AI-POWERED CAREER DISCOVERY</span>
             <h1>Discover & Match Jobs That Fit Your Resume</h1>
             <p className="hero-subtitle">
-              Job Matcher analyzes your resume and automatically evaluates live openings from top employers like Google, Amazon, Wells Fargo, and NVIDIA. High-match roles (&gt;70%) are automatically bookmarked for you.
+              Job Matcher analyzes your resume and automatically evaluates live openings from top employers like Google, Amazon, Wells Fargo, and NVIDIA. High-match roles (&gt;80%) are automatically bookmarked for you.
             </p>
             <div className="hero-ctas">
               <a className="button primary hero-btn" href={`${backendUrl}/oauth2/authorization/google`}>
@@ -261,7 +261,7 @@ export default function App() {
               <div className="feature-card">
                 <div className="feature-icon">⭐</div>
                 <h3>Auto-Save Top Matches</h3>
-                <p>Any job matching your resume with a score higher than 70% is automatically bookmarked to your profile for easy tracking.</p>
+                <p>Any job matching your resume with a score higher than 80% is automatically bookmarked to your profile for easy tracking.</p>
               </div>
               <div className="feature-card">
                 <div className="feature-icon">🌍</div>
@@ -288,7 +288,7 @@ export default function App() {
               <div className="step-card">
                 <span className="step-number">3</span>
                 <h3>Review & Apply</h3>
-                <p>Explore AI-scored matches, view auto-saved top picks (&gt;70%), and jump directly to official application portals.</p>
+                <p>Explore AI-scored matches, view auto-saved top picks (&gt;80%), and jump directly to official application portals.</p>
               </div>
             </div>
           </section>
@@ -699,7 +699,7 @@ function Matches({
   return (
     <section>
       <p className="eyebrow">RECOMMENDED</p>
-      <h1>Your matches above 0% (testing mode).</h1>
+      <h1>Your matches (60%+).</h1>
       {loading ? <p className="muted">Loading matches…</p> : (
         <JobList
           jobs={matches}

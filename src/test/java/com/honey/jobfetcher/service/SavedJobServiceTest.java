@@ -33,7 +33,7 @@ class SavedJobServiceTest {
     private SavedJobService savedJobService;
 
     @Test
-    void autoSavesMatchesWithScoreAtOrAboveSeventyPercent() {
+    void autoSavesMatchesWithScoreGreaterThanEightyPercent() {
         User user = new User();
         user.setId(1L);
 
@@ -47,8 +47,8 @@ class SavedJobServiceTest {
         when(savedJobRepository.findByUserIdAndJobId(1L, 10L)).thenReturn(Optional.empty());
         when(savedJobRepository.save(any(SavedJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        JobMatchResponse highMatch = new JobMatchResponse(10L, "ext-10", "Dev", "Google", "India", "Desc", "url", "GOOGLE", 75);
-        JobMatchResponse lowMatch = new JobMatchResponse(20L, "ext-20", "Dev", "Google", "India", "Desc", "url", "GOOGLE", 65);
+        JobMatchResponse highMatch = new JobMatchResponse(10L, "ext-10", "Dev", "Google", "India", "Desc", "url", "GOOGLE", 85);
+        JobMatchResponse lowMatch = new JobMatchResponse(20L, "ext-20", "Dev", "Google", "India", "Desc", "url", "GOOGLE", 75);
 
         savedJobService.autoSaveHighMatches(user, List.of(highMatch, lowMatch));
 
