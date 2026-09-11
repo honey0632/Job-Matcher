@@ -78,6 +78,15 @@ public class JobsService {
         return List.copyOf(savedJobs);
     }
 
+    public List<Jobs> fetchAndSaveForSource(JobSource source, String query) {
+        try {
+            return fetchAndSave(providerFor(source), query);
+        } catch (RuntimeException exception) {
+            logger.warn("Failed to fetch {} jobs: {}", source, exception.getMessage());
+            return List.of();
+        }
+    }
+
     public List<Jobs> getAllJobs(){
         return jobsRepository.findAll();
     }

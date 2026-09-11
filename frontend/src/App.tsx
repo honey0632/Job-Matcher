@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { api, Match, Preferences, User } from './api'
 
-type View = 'profile' | 'resume' | 'search' | 'matches'
+type View = 'home' | 'profile' | 'resume' | 'search' | 'matches' | 'saved'
 const backendUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 const emptyPreferences: Preferences = {
@@ -12,6 +12,14 @@ const emptyPreferences: Preferences = {
   experienceYears: 0,
   desiredRole: '',
 }
+
+const COMPANIES = [
+  { id: 'ALL', name: 'All Companies', icon: '🌐' },
+  { id: 'GOOGLE_CAREERS', name: 'Google Careers', icon: '🔵' },
+  { id: 'AMAZON', name: 'Amazon Jobs', icon: '🟧' },
+  { id: 'WELLS_FARGO', name: 'Wells Fargo', icon: '🔴' },
+  { id: 'NVIDIA', name: 'NVIDIA Jobs', icon: '🟢' },
+]
 
 function LegalLinks() {
   return (
@@ -95,8 +103,11 @@ export default function App() {
   if (path === '/terms-of-service') return <TermsOfService />
 
   const [user, setUser] = useState<User | null>(null)
-  const [view, setView] = useState<View>('profile')
+  const [view, setView] = useState<View>('home')
   const [preferences, setPreferences] = useState(emptyPreferences)
+  const [savedJobs, setSavedJobs] = useState<Match[]>([])
+  const [savedJobIds, setSavedJobIds] = useState<Set<number>>(new Set())
+  const [selectedCompany, setSelectedCompany] = useState<string>('ALL')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -107,7 +118,39 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     api.getPreferences().then(value => value && setPreferences(value)).catch(() => undefined)
+    loadSavedJobs()
   }, [user])
+
+  function loadSavedJobs() {
+    api.getSavedJobs().then(jobs => {
+      setSavedJobs(jobs)
+      setSavedJobIds(new Set(jobs.map(j => j.jobId).filter((id): id is number => id !== undefined)))
+    }).catch(() => undefined)
+  }
+
+  async function toggleSaveJob(job: Match) {
+    if (!job.jobId) return
+    try {
+      const isSaved = savedJobIds.has(job.jobId)
+      if (isSaved) {
+        await api.unsaveJob(job.jobId)
+        setSavedJobIds(prev => {
+          const next = new Set(prev)
+          next.delete(job.jobId!)
+          return next
+        })
+        setSavedJobs(prev => prev.filter(j => j.jobId !== job.jobId))
+        setMessage('Job removed from saved.')
+      } else {
+        const saved = await api.saveJob(job.jobId, job.score)
+        setSavedJobIds(prev => new Set(prev).add(job.jobId!))
+        setSavedJobs(prev => [saved, ...prev.filter(j => j.jobId !== job.jobId)])
+        setMessage('Job saved successfully!')
+      }
+    } catch {
+      setError('Failed to update saved job.')
+    }
+  }
 
   if (!user) {
     return (
@@ -143,19 +186,42 @@ export default function App() {
       <div className="layout">
         <aside className="sidebar">
           <p className="eyebrow">WORKSPACE</p>
-          {(['profile', 'resume', 'search', 'matches'] as View[]).map(item => (
+          {[
+            { id: 'home', label: '🏠 Dashboard' },
+            { id: 'search', label: '🔍 Search Jobs' },
+            { id: 'matches', label: '🎯 Recommended Matches' },
+            { id: 'saved', label: `⭐ Saved Jobs (${savedJobs.length})` },
+            { id: 'profile', label: '⚙️ Profile & Preferences' },
+            { id: 'resume', label: '📄 Resume' },
+          ].map(item => (
             <button
-              className={view === item ? 'nav-item active' : 'nav-item'}
-              onClick={() => setView(item)}
-              key={item}
+              className={view === item.id ? 'nav-item active' : 'nav-item'}
+              onClick={() => setView(item.id as View)}
+              key={item.id}
             >
-              {item === 'profile' ? 'Profile & preferences' : item === 'resume' ? 'Resume' : item === 'search' ? 'Search jobs' : 'My matches'}
+              {item.label}
             </button>
           ))}
         </aside>
         <main className="content">
           {message && <div className="notice success">{message}</div>}
           {error && <div className="notice error">{error}</div>}
+
+          {view === 'home' && (
+            <Home
+              user={user}
+              preferences={preferences}
+              savedCount={savedJobs.length}
+              onNavigate={(v) => setView(v)}
+              onSelectCompany={(companyId) => {
+                setSelectedCompany(companyId)
+                setView('search')
+              }}
+              savedJobIds={savedJobIds}
+              onToggleSave={toggleSaveJob}
+            />
+          )}
+
           {view === 'profile' && (
             <Profile
               preferences={preferences}
@@ -163,14 +229,133 @@ export default function App() {
               onSave={() => action(() => api.savePreferences(preferences), 'Preferences saved.')}
             />
           )}
+
           {view === 'resume' && (
             <Resume onUpload={file => action(() => api.uploadResume(file), 'Resume uploaded and processed.')} />
           )}
-          {view === 'search' && <Search preferences={preferences} />}
-          {view === 'matches' && <Matches />}
+
+          {view === 'search' && (
+            <Search
+              preferences={preferences}
+              selectedCompany={selectedCompany}
+              setSelectedCompany={setSelectedCompany}
+              savedJobIds={savedJobIds}
+              onToggleSave={toggleSaveJob}
+            />
+          )}
+
+          {view === 'matches' && (
+            <Matches
+              savedJobIds={savedJobIds}
+              onToggleSave={toggleSaveJob}
+            />
+          )}
+
+          {view === 'saved' && (
+            <SavedJobs
+              jobs={savedJobs}
+              savedJobIds={savedJobIds}
+              onToggleSave={toggleSaveJob}
+            />
+          )}
         </main>
       </div>
     </div>
+  )
+}
+
+function Home({
+  user,
+  preferences,
+  savedCount,
+  onNavigate,
+  onSelectCompany,
+  savedJobIds,
+  onToggleSave,
+}: {
+  user: User
+  preferences: Preferences
+  savedCount: number
+  onNavigate: (view: View) => void
+  onSelectCompany: (companyId: string) => void
+  savedJobIds: Set<number>
+  onToggleSave: (job: Match) => void
+}) {
+  const [topMatches, setTopMatches] = useState<Match[]>([])
+  const [loadingMatches, setLoadingMatches] = useState(false)
+
+  useEffect(() => {
+    setLoadingMatches(true)
+    api.matches()
+      .then(res => setTopMatches(res.slice(0, 5)))
+      .catch(() => setTopMatches([]))
+      .finally(() => setLoadingMatches(false))
+  }, [])
+
+  return (
+    <section>
+      <p className="eyebrow">DASHBOARD</p>
+      <h1>Welcome back, {user.displayName || user.email?.split('@')[0]}! 👋</h1>
+      <p className="muted">Your personalized job fetcher & AI matching center.</p>
+
+      <div className="dashboard-grid">
+        <div className="card stat-card">
+          <h3>Target Role</h3>
+          <div className="stat-value">{preferences.desiredRole || 'Not Set'}</div>
+          <div className="stat-sub">{preferences.country ? `${preferences.country} · ${preferences.experienceYears} yrs exp` : 'Update profile preferences'}</div>
+          <button className="button secondary" onClick={() => onNavigate('profile')}>Edit Profile</button>
+        </div>
+
+        <div className="card stat-card">
+          <h3>Saved Jobs</h3>
+          <div className="stat-value">{savedCount} Roles</div>
+          <div className="stat-sub">Jobs you have bookmarked</div>
+          <button className="button secondary" onClick={() => onNavigate('saved')}>View Saved</button>
+        </div>
+
+        <div className="card stat-card">
+          <h3>Approved Sources</h3>
+          <div className="stat-value">4 Companies</div>
+          <div className="stat-sub">Google, Amazon, Wells Fargo, NVIDIA</div>
+          <button className="button secondary" onClick={() => onNavigate('search')}>Search Jobs</button>
+        </div>
+      </div>
+
+      <div className="company-section">
+        <h2>Company Search Panel</h2>
+        <p className="muted">Select a company below to run targeted search & matching for that specific company.</p>
+        <div className="company-grid">
+          {COMPANIES.filter(c => c.id !== 'ALL').map(comp => (
+            <div
+              key={comp.id}
+              className="company-card"
+              onClick={() => onSelectCompany(comp.id)}
+            >
+              <span className="company-icon">{comp.icon}</span>
+              <span className="company-name">{comp.name}</span>
+              <button className="button primary" style={{ width: '100%', marginTop: '8px', fontSize: '13px' }}>
+                Search {comp.name.split(' ')[0]}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginTop: '36px' }}>
+        <h2>Top Recommended Roles</h2>
+        <p className="muted">Highest matching job opportunities based on your uploaded resume.</p>
+        {loadingMatches ? (
+          <p className="muted">Finding top matches for you…</p>
+        ) : (
+          <JobList
+            jobs={topMatches}
+            empty="No recommended matches yet. Please make sure your resume is uploaded and preferences are set."
+            savedJobIds={savedJobIds}
+            onToggleSave={onToggleSave}
+          />
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -187,7 +372,7 @@ function Profile({
     <section>
       <p className="eyebrow">PROFILE</p>
       <h1>Tell us what you want next.</h1>
-      <p className="muted">These criteria drive the Google Careers search.</p>
+      <p className="muted">These criteria drive job search & AI matching across all approved sources.</p>
       <form className="card form-grid" onSubmit={(event) => { event.preventDefault(); onSave() }}>
         <label>
           Country
@@ -199,7 +384,7 @@ function Profile({
         </label>
         <label>
           Desired role
-          <input value={preferences.desiredRole} onChange={event => setPreferences({ ...preferences, desiredRole: event.target.value })} placeholder="e.g. Java Backend Engineer" required />
+          <input value={preferences.desiredRole} onChange={event => setPreferences({ ...preferences, desiredRole: event.target.value })} placeholder="e.g. Software Engineer" required />
         </label>
         <button className="button primary" type="submit">Save preferences</button>
       </form>
@@ -222,34 +407,84 @@ function Resume({ onUpload }: { onUpload: (file: File) => void }) {
   )
 }
 
-function Search({ preferences }: { preferences: Preferences }) {
+function Search({
+  preferences,
+  selectedCompany,
+  setSelectedCompany,
+  savedJobIds,
+  onToggleSave,
+}: {
+  preferences: Preferences
+  selectedCompany: string
+  setSelectedCompany: (company: string) => void
+  savedJobIds: Set<number>
+  onToggleSave: (job: Match) => void
+}) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(false)
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
+  async function submit(event?: FormEvent) {
+    if (event) event.preventDefault()
     setLoading(true)
     try {
-      setMatches(await api.searchJobs(preferences))
+      const criteria: Preferences = {
+        ...preferences,
+        source: selectedCompany === 'ALL' ? undefined : selectedCompany,
+      }
+      setMatches(await api.searchJobs(criteria))
     } finally {
       setLoading(false)
     }
   }
 
+  const selectedCompObj = COMPANIES.find(c => c.id === selectedCompany) || COMPANIES[0]
+
   return (
     <section>
       <p className="eyebrow">DISCOVER</p>
-      <h1>Search job matches.</h1>
-      <p className="muted">Matches above 80% are shown.</p>
-      <form className="searchbar" onSubmit={submit}>
-        <button className="button primary">{loading ? 'Searching…' : 'Search jobs'}</button>
-      </form>
-      <JobList jobs={matches} empty="Run a search after uploading your resume." />
+      <h1>Search & Match Jobs</h1>
+      <p className="muted">Select a company from the side panel to fetch & score jobs from that specific source only.</p>
+
+      <div className="search-layout">
+        <aside className="company-side-panel">
+          <h4>Company Panel</h4>
+          {COMPANIES.map(comp => (
+            <button
+              key={comp.id}
+              className={selectedCompany === comp.id ? 'company-btn active' : 'company-btn'}
+              onClick={() => setSelectedCompany(comp.id)}
+            >
+              <span>{comp.icon}</span>
+              <span>{comp.name}</span>
+            </button>
+          ))}
+        </aside>
+
+        <div>
+          <form className="searchbar" onSubmit={submit}>
+            <button className="button primary" style={{ width: '100%' }}>
+              {loading ? `Matching ${selectedCompObj.name}…` : `Search & Match ${selectedCompObj.name}`}
+            </button>
+          </form>
+          <JobList
+            jobs={matches}
+            empty={`Click "Search & Match ${selectedCompObj.name}" to discover roles matched to your resume.`}
+            savedJobIds={savedJobIds}
+            onToggleSave={onToggleSave}
+          />
+        </div>
+      </div>
     </section>
   )
 }
 
-function Matches() {
+function Matches({
+  savedJobIds,
+  onToggleSave,
+}: {
+  savedJobIds: Set<number>
+  onToggleSave: (job: Match) => void
+}) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -261,56 +496,112 @@ function Matches() {
     <section>
       <p className="eyebrow">RECOMMENDED</p>
       <h1>Your matches above 80%.</h1>
-      {loading ? <p className="muted">Loading matches…</p> : <JobList jobs={matches} empty="Upload a resume and run a search to see matches." />}
+      {loading ? <p className="muted">Loading matches…</p> : (
+        <JobList
+          jobs={matches}
+          empty="Upload a resume and run a search to see matches."
+          savedJobIds={savedJobIds}
+          onToggleSave={onToggleSave}
+        />
+      )}
     </section>
   )
 }
 
-function JobList({ jobs, empty }: { jobs: Match[]; empty: string }) {
+function SavedJobs({
+  jobs,
+  savedJobIds,
+  onToggleSave,
+}: {
+  jobs: Match[]
+  savedJobIds: Set<number>
+  onToggleSave: (job: Match) => void
+}) {
+  return (
+    <section>
+      <p className="eyebrow">BOOKMARKS</p>
+      <h1>Saved Jobs ⭐</h1>
+      <p className="muted">All jobs you have bookmarked for quick reference. They will never disappear.</p>
+      <JobList
+        jobs={jobs}
+        empty="You haven't saved any jobs yet. Click 'Save Job' on any job card to bookmark it."
+        savedJobIds={savedJobIds}
+        onToggleSave={onToggleSave}
+      />
+    </section>
+  )
+}
+
+function JobList({
+  jobs,
+  empty,
+  savedJobIds,
+  onToggleSave,
+}: {
+  jobs: Match[]
+  empty: string
+  savedJobIds: Set<number>
+  onToggleSave: (job: Match) => void
+}) {
   const [descriptionJobId, setDescriptionJobId] = useState<number | string>()
 
   if (!jobs.length) return <div className="card empty">{empty}</div>
 
   return (
     <div className="job-list">
-      {jobs.map((job, index) => (
-        <article className="card job" key={job.jobId ?? job.externalId ?? index}>
-          <div>
-            <h3>{job.title || 'Untitled role'}</h3>
-            <p>{job.company || 'Company'} · {job.location || 'Location'}</p>
-          </div>
-          <div className="job-actions">
-            <strong>{job.score}% match</strong>
-            <div className="job-buttons">
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => setDescriptionJobId(
-                  descriptionJobId === (job.jobId ?? job.externalId) ? undefined : (job.jobId ?? job.externalId)
+      {jobs.map((job, index) => {
+        const jobId = job.jobId ?? job.externalId
+        const isSaved = job.jobId ? savedJobIds.has(job.jobId) : false
+        return (
+          <article className="card job" key={jobId ?? index}>
+            <div>
+              <h3>{job.title || 'Untitled role'}</h3>
+              <p>
+                <strong>{job.company || 'Company'}</strong> · {job.location || 'Location'}
+                {job.source && <span className="badge-company" style={{ marginLeft: '8px' }}>{job.source}</span>}
+              </p>
+            </div>
+            <div className="job-actions">
+              {job.score !== undefined && <strong>{job.score}% match</strong>}
+              <div className="job-buttons">
+                {job.jobId && (
+                  <button
+                    className={isSaved ? 'button saved-btn active' : 'button saved-btn'}
+                    type="button"
+                    onClick={() => onToggleSave(job)}
+                  >
+                    {isSaved ? 'Saved ⭐' : 'Save Job ☆'}
+                  </button>
                 )}
-              >
-                Job Description
-              </button>
-              {job.jobUrl && (
-                <>
-                  {/* The source currently provides one portal URL for both actions. */}
-                  <a className="button secondary" href={job.jobUrl} target="_blank" rel="noreferrer">
-                    View on Job Portal ↗
-                  </a>
-                  <a className="button primary" href={job.jobUrl} target="_blank" rel="noreferrer">
-                    Apply Now ↗
-                  </a>
-                </>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => setDescriptionJobId(
+                    descriptionJobId === jobId ? undefined : jobId
+                  )}
+                >
+                  Job Description
+                </button>
+                {job.jobUrl && (
+                  <>
+                    <a className="button secondary" href={job.jobUrl} target="_blank" rel="noreferrer">
+                      Portal ↗
+                    </a>
+                    <a className="button primary" href={job.jobUrl} target="_blank" rel="noreferrer">
+                      Apply ↗
+                    </a>
+                  </>
+                )}
+              </div>
+              {descriptionJobId === jobId && (
+                <p className="job-description">
+                  {job.description || 'No job description is available.'}
+                </p>
               )}
             </div>
-            {descriptionJobId === (job.jobId ?? job.externalId) && (
-              <p className="job-description">
-                {job.description || 'No job description is available.'}
-              </p>
-            )}
-          </div>
-        </article>
-      ))}
+          </article>
+        )
+      })}
     </div>
   )
 }

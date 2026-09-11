@@ -11,6 +11,10 @@ public record JobSearchRequest(
         @Min(value = 0, message = "Experience cannot be negative")
         Integer experienceYears,
         @NotBlank(message = "Desired role is required")
-        String desiredRole
+        String desiredRole,
+        String source
 ) {
+    public JobSearchRequest(String country, Integer experienceYears, String desiredRole) {
+        this(country, experienceYears, desiredRole, null);
+    }
 }

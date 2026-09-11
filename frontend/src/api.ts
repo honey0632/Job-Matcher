@@ -59,6 +59,16 @@ export const api = {
       body: JSON.stringify(criteria),
     }),
   matches: () => request<Match[]>('/api/jobs/matches'),
+  getSavedJobs: () => request<Match[]>('/api/jobs/saved'),
+  getSavedJobIds: () => request<number[]>('/api/jobs/saved/ids'),
+  saveJob: (jobId: number, score?: number) =>
+    request<Match>(`/api/jobs/saved/${jobId}${score !== undefined ? `?score=${score}` : ''}`, {
+      method: 'POST',
+    }),
+  unsaveJob: (jobId: number) =>
+    request<void>(`/api/jobs/saved/${jobId}`, {
+      method: 'DELETE',
+    }),
 }
 
 export type User = {
@@ -71,6 +81,7 @@ export type Preferences = {
   country: string
   experienceYears: number
   desiredRole: string
+  source?: string
 }
 
 export type Resume = {
@@ -88,5 +99,6 @@ export type Match = {
   location?: string
   description?: string
   jobUrl?: string
+  source?: string
   score?: number
 }

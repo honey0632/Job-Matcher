@@ -12,8 +12,22 @@ public record JobMatchResponse(
         String location,
         String description,
         String jobUrl,
+        String source,
         int score
 ) {
+    public JobMatchResponse(
+            Long jobId,
+            String externalId,
+            String title,
+            String company,
+            String location,
+            String description,
+            String jobUrl,
+            int score
+    ) {
+        this(jobId, externalId, title, company, location, description, jobUrl, null, score);
+    }
+
     public static JobMatchResponse from(Jobs job, int score) {
         return new JobMatchResponse(
                 job.getId(),
@@ -23,6 +37,7 @@ public record JobMatchResponse(
                 job.getLocation(),
                 job.getDescription(),
                 job.getJobUrl(),
+                job.getSource(),
                 score
         );
     }

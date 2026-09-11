@@ -24,7 +24,8 @@ class JobsControllerTest {
     private final MockMvc mockMvc = standaloneSetup(new JobsController(
             jobsService,
             mock(AuthenticatedUserService.class),
-            mock(CriteriaSearchService.class)
+            mock(CriteriaSearchService.class),
+            mock(com.honey.jobfetcher.service.SavedJobService.class)
     )).build();
 
     @Test
