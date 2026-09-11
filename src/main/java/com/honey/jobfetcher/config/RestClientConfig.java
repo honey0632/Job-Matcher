@@ -14,8 +14,8 @@ import java.time.Duration;
 
 @Configuration
 public class RestClientConfig {
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(100);
 
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
@@ -29,3 +29,4 @@ public class RestClientConfig {
         return RestClient.builder().requestFactory(requestFactory);
     }
 }
+
