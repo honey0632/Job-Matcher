@@ -4,349 +4,263 @@ Last updated: 2026-09-11
 Repository: `honey0632/Job-Matcher`  
 Branch: `main`
 
-## Detailed File-by-File Summary of All Recent Changes — 2026-09-11
+---
+
+## 1. System Architecture Overview
+
+Job Matcher is a full-stack Spring Boot + React platform designed to discover, ingest, store, extract, and match job opportunities against user resumes using AI (Google Gemini 2.5/3.6) and deterministic keyword fallback matching.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              React Frontend (SPA)                               │
+│  - Dashboard Hero & Live Criteria Summary                                       │
+│  - Company Side Panel (Google, Amazon, Wells Fargo, NVIDIA)                     │
+│  - Focused Single-Company On-Demand Matching                                    │
+│  - Dual-Layer Persistent Saved Jobs (PostgreSQL + localStorage cache)           │
+│  - Job Cards: Inline Description, Direct Apply, Portal Link, Bookmark ⭐       │
+└────────────────────────────────────────┬────────────────────────────────────────┘
+                                         │ REST API / Session Auth
+┌────────────────────────────────────────▼────────────────────────────────────────┐
+│                          Spring Boot Backend (Java 21)                          │
+│                                                                                 │
+│ ┌───────────────────────────┐    ┌────────────────────────────────────────────┐ │
+│ │ Auth & Session Controller │    │ CriteriaSearchService & JobsController     │ │
+│ │ - Google OAuth2           │    │ - Bounded on-demand provider scraping      │ │
+│ │ - HttpOnly Session Cookie │    │ - Multi-source aggregation & source filter │ │
+│ └───────────────────────────┘    └─────────────────────┬──────────────────────┘ │
+│                                                        │                        │
+│ ┌──────────────────────────────────────────────────────▼──────────────────────┐ │
+│ │                     Job Matching Engine (Gemini / Keyword)                  │ │
+│ │ - JobLocationMatcher (Country synonym tokens: IND/IN, US/USA, etc.)         │ │
+│ │ - Balanced Cross-Provider Candidate Interleaving                            │ │
+│ │ - LLM Semantic Batch Scoring (Gemini 2.5/3.6 with 100s HTTP Timeout)        │ │
+│ │ - Fallback Keyword Overlap Scoring (Title-weighted term ratio)               │ │
+│ └──────────────────────────────────────────────────────┬──────────────────────┘ │
+│                                                        │                        │
+│ ┌──────────────────────────────────────────────────────▼──────────────────────┐ │
+│ │                      Approved Job Sources Strategy Map                      │ │
+│ │ ┌───────────────────┐ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐ │ │
+│ │ │  Google Careers   │ │  Amazon Jobs  │ │  Wells Fargo  │ │  NVIDIA Jobs  │ │ │
+│ │ │  (HTML Script DS) │ │  (JSON API)   │ │  (XML Feed)   │ │  (Sitemap/LD) │ │ │
+│ │ └───────────────────┘ └───────────────┘ └───────────────┘ └───────────────┘ │ │
+│ └─────────────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────┬────────────────────────────────────────┘
+                                         │ JPA / Hibernate
+┌────────────────────────────────────────▼────────────────────────────────────────┐
+│                             PostgreSQL 18 Database                              │
+│ - users, resumes, search_preferences, jobs (unique external_id), saved_jobs     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Approved Job Sources & Ingestion Mechanics
+
+All job sources operate on public, unauthenticated HTTP endpoints with strict safety limits, canonical URL validation, and isolated error boundaries:
+
+| Provider | Ingestion Source | Output Identifier | Safety Limits & Ingestion Policies |
+| :--- | :--- | :--- | :--- |
+| **Google Careers** | `https://www.google.com/about/careers/applications/jobs/results/` | `GOOGLE_CAREERS:<hash/id>` | HTML script parsing of `projects/gweb-careers-proto` payload. |
+| **Amazon Jobs** | `https://www.amazon.jobs/en/search.json` | `AMAZON:<id_icims>` | Sequential pagination up to 3 pages (200 jobs max), 2 MB payload limit, location combination (`normalized_location` + `location`). |
+| **Wells Fargo** | `https://www.wellsfargojobs.com/en/jobs/xml/` | `WELLS_FARGO:<referencenumber>` | Unpaged XML feed safely parsed with DTD/external entities disabled (`SafeXmlParser`), 10 MB payload safety limit, 500 records max. |
+| **NVIDIA Jobs** | `https://nvidia.wd5.myworkdayjobs.com/.../sitemap.xml` | `NVIDIA:<identifier.value>` | Reads public sitemap XML (10,000 URL limit), filters query-matching job URLs, fetches up to 25 public job pages (1 MB limit), parses embedded `JobPosting` JSON-LD. |
+
+---
+
+## 3. Location Normalization & Candidate Balancing
+
+### Problem: Why Non-Google Jobs Initially Failed to Match
+Different job portals format location strings differently:
+- **Google Careers:** `"Bengaluru, India"`, `"Hyderabad, India"`
+- **Amazon Jobs:** `"Bengaluru, KA, IND"`, `"Seattle, WA, USA"`
+- **NVIDIA Jobs:** `"Bengaluru, KA, 560001, IN"`
+- **Wells Fargo:** `"Charlotte, NC, US, 28202"`
+
+When the user searched for `country: "India"`, naive substring matching `jobLocation.toLowerCase().contains("india")` discarded all Amazon (`IND`), NVIDIA (`IN`), and Wells Fargo (`US`/`IND`) listings before reaching the match scoring stage.
+
+### The Fix: `JobLocationMatcher` & Balanced Candidate Interleaving
+1. **`JobLocationMatcher` (`src/main/java/com/honey/jobfetcher/provider/JobLocationMatcher.java`):**
+   - Implements country synonym dictionaries with word-boundary regex tokens (e.g. `\bIND\b`, `\bIN\b` for India; `\bUSA\b`, `\bUS\b` for United States).
+   - Matches `"Remote"` or substring matches automatically.
+2. **Balanced Cross-Provider Candidate Interleaving:**
+   - Instead of picking the first 25 jobs from `jobsRepository.findAll()` (which were predominantly Google jobs), `GeminiJobMatchingService` groups location-matching jobs by provider and interleaves them in round-robin order.
+   - When a specific company is selected in the UI (`source: "AMAZON"`), it directly evaluates candidates strictly from that company.
+
+---
+
+## 4. Frontend Architecture & Workflows
+
+### 1. Dashboard Homepage (`view === 'home'`)
+- **Hero Card:** Displays user welcome, active target role, country, years of experience, and 1-click navigation buttons (`Search Jobs`, `Saved Roles`, `Update Profile`).
+- **Stats Row:** Metric cards showing current desired role, total saved jobs count, and approved providers.
+- **Company Focus Grid:** Company cards (Google, Amazon, Wells Fargo, NVIDIA) with individual icons and summaries that open the focused search directly.
+- **Top Recommended Roles:** Displays top-scoring match opportunities based on the candidate's active resume.
+
+### 2. Company Side Panel & Single-Company Matching (`view === 'search'`)
+- **Side Panel Navigation:** Users can toggle between `All Companies`, `Google Careers`, `Amazon Jobs`, `Wells Fargo`, and `NVIDIA Jobs`.
+- **Targeted Execution:** Selecting a company automatically runs search and matching *only* for the open company (`POST /api/jobs/search` with `{ source: "AMAZON", ... }`), eliminating wasteful external API calls and token consumption for unselected companies.
+
+### 3. Persistent Saved Jobs (Dual-Layer Cache)
+- **Problem:** Saved jobs would vanish if API calls failed or state reset during tab transitions.
+- **Solution:** 
+  - Dual-layer storage: Every bookmark action updates PostgreSQL via `POST / DELETE /api/jobs/saved/{jobId}` and instantly syncs with browser `localStorage` (`job-fetcher.saved-jobs.v1`).
+  - On page load, initial state is seeded immediately from `localStorage` while fresh server state is retrieved in the background.
+
+### 4. Job Card Actions
+- **Save Job ⭐ / Saved:** Toggle bookmark state instantly with visual feedback.
+- **Job Description:** Inline expandable accordion displaying full formatted job requirements.
+- **Portal ↗ / Apply ↗:** Direct link to original job posting URL.
+
+---
+
+## 5. Detailed File-by-File Summary of Recent Changes
 
 ### Core Configuration & Services
 1. **`src/main/java/com/honey/jobfetcher/config/RestClientConfig.java`**
    - Configured JDK `HttpClient` request factory for Spring `RestClient`.
-   - Updated `CONNECT_TIMEOUT` to 10 seconds and `READ_TIMEOUT` to 100 seconds (`Duration.ofSeconds(100)` in `0bc0e7a`) to prevent Gemini AI scoring requests from timing out during heavy LLM evaluations.
+   - Set `CONNECT_TIMEOUT = Duration.ofSeconds(10)` and `READ_TIMEOUT = Duration.ofSeconds(100)` to handle heavy Gemini AI evaluations without connection drop.
 
-2. **`src/main/java/com/honey/jobfetcher/service/GeminiJobMatchingService.java`**
-   - Added try-catch fallback around `requestScores(resume, candidates)`. If Gemini API throws an exception (e.g. HTTP 503 Service Unavailable under high demand), it logs a warning and falls back to calculating keyword match scores (`fallbackKeywordScores`).
-   - Implemented title-weighted keyword scoring relative to required job terms so candidates get accurate match scores even during upstream AI service disruptions.
+2. **`src/main/java/com/honey/jobfetcher/provider/JobLocationMatcher.java`** (New File)
+   - Handles multi-country synonym dictionaries (`IND`, `IN`, `USA`, `US`, `UK`, `GB`, etc.) and word boundary regex matching so non-Google listings match user country criteria.
 
-3. **`src/main/java/com/honey/jobfetcher/service/KeywordJobMatchingService.java`**
-   - Updated keyword match score formula to calculate overlap relative to required job & title keywords instead of dividing by total resume length. This allows good keyword matches to score > 80% and pass the criteria threshold.
+3. **`src/main/java/com/honey/jobfetcher/service/JobMatchingService.java`**
+   - Extended interface contract with `findMatches(Long resumeId, int limit, String location, String source)`.
 
-4. **`src/main/java/com/honey/jobfetcher/service/JobsService.java`**
-   - Refactored to support multi-provider job fetching via `JobProvider` strategy map and `ApprovedJobSourcesProperties`.
-   - Added `fetchAndSaveApprovedJobs(String query)` to iterate enabled sources.
-   - Updated in commit `8b5499c` with resilient try-catch logic: logs provider failures with `logger.warn(...)` and continues fetching from remaining enabled providers instead of failing fast.
+4. **`src/main/java/com/honey/jobfetcher/service/GeminiJobMatchingService.java`**
+   - Integrated `JobLocationMatcher` for location filtering.
+   - Added `matchesSource(...)` and `selectBalancedCandidates(...)` for fair multi-provider representation in LLM prompts.
+   - Robust try-catch fallback around `requestScores(resume, candidates)`: falls back to title-weighted keyword scoring on upstream HTTP 503 or quota limits.
 
-5. **`src/main/java/com/honey/jobfetcher/service/CriteriaSearchService.java`**
-   - Replaced direct `fetchAndSaveGoogleJobs` invocation with `jobsService.fetchAndSaveApprovedJobs(query)` to trigger search across all enabled sources before running match scoring.
+5. **`src/main/java/com/honey/jobfetcher/service/KeywordJobMatchingService.java`**
+   - Updated to support `source` filtering and `JobLocationMatcher`.
+   - Title-weighted overlap scoring relative to job term count rather than total resume length.
 
-### Job Source HTTP Clients
-4. **`src/main/java/com/honey/jobfetcher/client/SourceHttpClient.java`** (New File)
-   - Bounded HTTP utility executing GET requests with custom `JobFetcher/1.0` User-Agent header, status validation, and error wrapping.
+6. **`src/main/java/com/honey/jobfetcher/service/JobsService.java`**
+   - Added `fetchAndSaveForSource(JobSource source, String query)` for single-source queries.
+   - Resilient try-catch in `fetchAndSaveApprovedJobs(query)`: logs warnings and continues when individual providers fail.
 
-5. **`src/main/java/com/honey/jobfetcher/client/WellsFargoJobsClient.java`** (New File)
-   - Fetches public XML feed from `https://www.wellsfargojobs.com/en/jobs/xml/`.
-   - Tuned safety limit `MAX_RESPONSE_CHARACTERS` in `8b5499c` from 2,000,000 (2 MB) to 10,000,000 (10 MB) to safely process live XML payloads (~3.5 MB).
+7. **`src/main/java/com/honey/jobfetcher/service/CriteriaSearchService.java`**
+   - Supports source-filtered fetching (`fetchAndSaveForSource`) and passes `sourceFilter` down to `jobMatchingService.findMatches(...)`.
 
-6. **`src/main/java/com/honey/jobfetcher/client/AmazonJobsClient.java`** (New File)
-   - Fetches public Amazon JSON search feed from `https://www.amazon.jobs/en/search.json`.
-   - Implements page iteration (up to 3 pages / 200 jobs max) with repeated-ID / no-progress safety checks and 2 MB per-page payload limit.
+### Job Source Clients, Parsers & Providers
+8. **`src/main/java/com/honey/jobfetcher/parser/AmazonJobsParser.java`**
+   - Combines `normalized_location` (e.g. `"Bengaluru, KA, IND"`) and `location` (e.g. `"India"`) into a unified location string.
 
-7. **`src/main/java/com/honey/jobfetcher/client/NvidiaJobsClient.java`** (New File)
-   - Fetches public sitemap XML from `https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/sitemap.xml` (3 MB limit) and individual allowlisted job page HTMLs (1 MB limit per page, up to 25 pages max).
+9. **`src/main/java/com/honey/jobfetcher/client/WellsFargoJobsClient.java`**
+   - Set `MAX_RESPONSE_CHARACTERS = 10_000_000` (10 MB) to safely accommodate live XML feed size (~3.5 MB).
 
-### Parsers & Security
-8. **`src/main/java/com/honey/jobfetcher/parser/SafeXmlParser.java`** (New File)
-   - Secure XML parser wrapper using `DocumentBuilderFactory` with DTD, external entity, and parameter entity resolution disabled to prevent XXE vulnerabilities.
+10. **`src/main/java/com/honey/jobfetcher/parser/SafeXmlParser.java`**
+    - Secure XML parser wrapper with disabled DTD and external entity resolution.
 
-9. **`src/main/java/com/honey/jobfetcher/parser/WellsFargoJobsParser.java`** (New File)
-   - Uses `SafeXmlParser` to parse Wells Fargo job elements, canonicalize job URLs (`JobUrlPolicy`), filter by query (`JobQuery`), and assign `WELLS_FARGO:<ref>` external IDs. Enforces 500 max record limit.
+11. **`src/main/java/com/honey/jobfetcher/provider/AmazonJobProvider.java`**, **`GoogleCareersJobProvider.java`**, **`NvidiaJobProvider.java`**, **`WellsFargoJobProvider.java`**
+    - Source-specific provider adapters adhering to `JobProvider` interface.
 
-10. **`src/main/java/com/honey/jobfetcher/parser/AmazonJobsParser.java`** (New File)
-    - Parses JSON search results from Amazon, extracting job ID, title, description, location, and canonical URL. Assigns `AMAZON:<id>` external IDs.
+### Frontend (`frontend/src/`)
+12. **`frontend/src/App.tsx`**
+    - Implemented dashboard hero banner and profile summary.
+    - Added company search panel with focused single-company trigger.
+    - Added `localStorage` dual-layer caching for saved jobs.
+    - Updated company filter buttons to prevent invalid nesting.
 
-11. **`src/main/java/com/honey/jobfetcher/parser/NvidiaJobsParser.java`** (New File)
-    - Extracts job page URLs from sitemap XML (10,000 location safety limit), filters by query, and parses embedded `JobPosting` JSON-LD from allowlisted NVIDIA job pages. Assigns `NVIDIA:<id>` external IDs.
+13. **`frontend/src/styles.css`**
+    - Added CSS styles for `.homepage-hero`, `.hero-summary`, `.company-card-button`, `.company-status`, `.saved-btn`, and responsive layouts. Fixed media query syntax.
 
-### Provider Abstraction & Domain Model
-12. **`src/main/java/com/honey/jobfetcher/provider/JobProvider.java`** (New File)
-    - Core provider interface with `source()` and `fetchJobs(String query)`.
-
-13. **`src/main/java/com/honey/jobfetcher/provider/JobSource.java`** (New File)
-    - Enum representing supported job sources (`GOOGLE_CAREERS`, `AMAZON`, `WELLS_FARGO`, `NVIDIA`).
-
-14. **`src/main/java/com/honey/jobfetcher/provider/JobQuery.java`** (New File)
-    - Query validation and case-insensitive word token matching for title/description filtering.
-
-15. **`src/main/java/com/honey/jobfetcher/provider/JobUrlPolicy.java`** (New File)
-    - URL canonicalization and domain/path allowlist validation.
-
-16. **`src/main/java/com/honey/jobfetcher/provider/ApprovedJobSourcesProperties.java`** (New File)
-    - Spring `@ConfigurationProperties(prefix = "app.job-sources")` binding `app.job-sources.enabled` / `JOB_SOURCES_ENABLED` to active sources.
-
-17. **`src/main/java/com/honey/jobfetcher/provider/AmazonJobProvider.java`**, **`GoogleCareersJobProvider.java`**, **`NvidiaJobProvider.java`**, **`WellsFargoJobProvider.java`** (New Files)
-    - Source-specific `JobProvider` implementations wrapping clients and parsers.
-
-### Controller, Properties & Frontend
-18. **`src/main/java/com/honey/jobfetcher/controller/JobMatchingController.java`**
-    - Updated match threshold bounds and validation logic.
-
-19. **`src/main/resources/application.properties`**
-    - Added `app.job-sources.enabled=${JOB_SOURCES_ENABLED:GOOGLE_CAREERS,AMAZON,WELLS_FARGO,NVIDIA}`.
-
-20. **`README.md`**
-    - Documented approved job sources, configuration properties, timeouts, and API shapes.
-
-21. **`frontend/src/api.ts`**
-    - Updated API contracts and endpoints for multi-source search and match querying.
-
-22. **`frontend/src/App.tsx` & `frontend/src/styles.css`**
-    - Built comprehensive homepage dashboard hero and quick actions.
-    - Added local storage caching for saved jobs alongside server sync to ensure bookmarked jobs never disappear on refresh/re-render.
-    - Updated company side panel workflow so only the selected company triggers active search and match scoring.
-
-23. **`src/main/java/com/honey/jobfetcher/provider/JobLocationMatcher.java`** (New File) & **`JobMatchingService.java`**
-    - Added country synonym and token matching (e.g., `IND`/`IN` for India, `US`/`USA` for United States) so Amazon, NVIDIA, and Wells Fargo jobs are not rejected by location filters.
-    - Updated `GeminiJobMatchingService` and `KeywordJobMatchingService` to accept source filtering and select balanced candidates across all sources so non-Google providers are fairly scored and returned.
+14. **`frontend/src/api.ts`**
+    - Type definitions and REST methods for criteria search with optional `source` parameter, saved jobs CRUD, and CSRF handling.
 
 ### Comprehensive Test Suite
-24. **`src/test/java/com/honey/jobfetcher/service/JobsServiceTest.java`**
-    - Updated tests including `skipsFailingApprovedProviderAndContinues()` to verify resilient multi-provider behavior when individual sources fail.
-
-25. **New Test Fixtures & Unit Tests:**
-    - `AmazonJobsClientTest.java`
-    - `NvidiaJobsClientTest.java`
-    - `JobMatchingControllerTest.java`
-    - `AmazonJobsParserTest.java`
-    - `NvidiaJobsParserTest.java`
-    - `WellsFargoJobsParserTest.java`
-    - `AmazonJobProviderTest.java`
-    - `CriteriaSearchServiceTest.java`
-    - `JobLocationMatcherTest.java`
+15. **`src/test/java/com/honey/jobfetcher/provider/JobLocationMatcherTest.java`** (New File)
+    - Verifies country token matching for India (`IND`, `IN`), United States (`USA`, `US`), remote roles, and rejection of mismatched locations.
+16. **`src/test/java/com/honey/jobfetcher/service/CriteriaSearchServiceTest.java`**
+    - Verifies score > 80 filtering and source-targeted search delegation.
+17. **`src/test/java/com/honey/jobfetcher/service/KeywordJobMatchingServiceTest.java`**
+    - Verifies keyword scoring and source/location filtering.
+18. **`src/test/java/com/honey/jobfetcher/parser/AmazonJobsParserTest.java`**
+    - Verifies Amazon JSON mapping and combined location parsing.
+19. **`src/test/java/com/honey/jobfetcher/service/JobsServiceTest.java`**
+    - Verifies resilient provider iteration when a provider fails.
 
 ---
 
-## Post-Push Production Incidents, Diagnosis & Current Status — 2026-09-11
+## 6. Production Operations & Incident History
 
-Following the push of commit `b5ab565` (`Add approved job source providers`) and subsequent push `0bc0e7a` (`Increase RestClient read timeout to 100 seconds`), the following sequence of events and diagnostics occurred:
+### Incident 1: Wells Fargo XML Safety Limit (Pushed in `8b5499c`)
+- **Symptom:** `IllegalStateException: Wells Fargo Jobs response exceeds the 2 MB safety limit` causing HTTP 500.
+- **Fix:** Increased `MAX_RESPONSE_CHARACTERS` to 10 MB in `WellsFargoJobsClient.java` and wrapped provider iteration in `JobsService` with try-catch.
 
-### Incident 1: Wells Fargo Feed Safety Limit & Fail-Fast Abort
-- **Error in logs:** `java.lang.IllegalStateException: Wells Fargo Jobs response exceeds the 2 MB safety limit` at `WellsFargoJobsClient.fetchAllJobs(WellsFargoJobsClient.java:24)`.
-- **Root Cause:**
-  - `WellsFargoJobsClient` hardcoded `MAX_RESPONSE_CHARACTERS = 2_000_000` (2 MB).
-  - The live Wells Fargo XML feed payload exceeded 2 MB.
-  - `JobsService.fetchAndSaveApprovedJobs()` was designed to fail-fast on any exception from any enabled provider (`throw new IllegalStateException("Failed to fetch " + source + " jobs", exception)`), causing `POST /api/jobs/search` to fail with HTTP 500.
-- **Production Mitigation:**
-  - Modified `/opt/jobmatcher/.env` on the production server to exclude Wells Fargo:
-    ```bash
-    JOB_SOURCES_ENABLED=GOOGLE_CAREERS,AMAZON,NVIDIA
-    ```
-  - Recreated `jobmatcher-backend-1`.
+### Incident 2: Gemini Read Timeout (Pushed in `0bc0e7a`)
+- **Symptom:** `HttpTimeoutException: Request cancelled` during batch LLM evaluation of 25 jobs.
+- **Fix:** Increased `READ_TIMEOUT` in `RestClientConfig.java` to 100 seconds (`Duration.ofSeconds(100)`).
 
-### Incident 2: Gemini AI Scoring Read Timeout & Timeout Increase
-- **Error in logs:** `Request processing failed: org.springframework.web.client.ResourceAccessException: I/O error on POST request for "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent": Request cancelled` with root cause `java.net.http.HttpTimeoutException: Request cancelled` at `GeminiJobMatchingService.requestScores(GeminiJobMatchingService.java:114)`.
-- **Root Cause:**
-  - `RestClientConfig` had a shared 10-second `READ_TIMEOUT` (`Duration.ofSeconds(10)`).
-  - Calling `gemini-3.6-flash` to evaluate and score up to 25 jobs against a resume under load frequently takes > 10 seconds.
-  - JDK `HttpClient` cancelled the request at the 10s deadline.
-- **Fix Implemented & Pushed:**
-  - Updated `RestClientConfig.java` to set `READ_TIMEOUT = Duration.ofSeconds(100)` and `CONNECT_TIMEOUT = Duration.ofSeconds(10)`.
-  - Committed and pushed in `0bc0e7a` (`Increase RestClient read timeout to 100 seconds`).
+### Incident 3: 0 Jobs Returned Under Keyword Fallback (Pushed in `3cf2754`)
+- **Symptom:** Sub-80% keyword scores filtered out all results when Gemini was unavailable.
+- **Fix:** Refined keyword overlap formula to weight required job keywords and title terms, and implemented graceful Gemini 503 fallback.
 
-### Incident 3: "No Jobs Coming" Diagnosis (Keyword Matcher vs 80% Threshold)
-- **Symptom:** User observed zero jobs returning in search.
-- **Root Cause & Diagnosis:**
-  - When `MATCHING_PROVIDER` was temporarily set to `keyword` to test without Gemini, the keyword matcher computes a simple word-overlap ratio between resume keywords and job descriptions.
-  - In practice, keyword overlap scores range between **15% and 40%**.
-  - However, `CriteriaSearchService` filters with `match.score() > 80` (80% production threshold).
-  - As a result, every keyword match was filtered out, returning 0 results to the frontend.
-  - PostgreSQL database query confirmed 84 jobs exist in the DB (59 Google Careers, 25 NVIDIA) and 5 extracted resumes exist.
-- **Current Production State:**
-  - Re-enabled `MATCHING_PROVIDER=gemini` and `GEMINI_MODEL=gemini-3.6-flash` in production `.env`.
-  - Production backend restarted and healthy.
-  - Gemini scoring provides true semantic scores (capable of scoring > 80% for good matches), resolving the 0-job symptom when criteria match.
-
-### Implemented & Deployed Code Fixes
-1. **Resilient Provider Aggregation in `JobsService` (Pushed in `8b5499c`):**
-   - Changed `JobsService.fetchAndSaveApprovedJobs()` so that individual provider failures (e.g. rate limit, network timeout, payload limit) log a warning and continue with the remaining providers, rather than aborting the entire search request.
-2. **Wells Fargo Client Safety Limit Tuning (Pushed in `8b5499c`):**
-   - Increased `MAX_RESPONSE_CHARACTERS` in `WellsFargoJobsClient.java` from 2 MB (2,000,000) to 10 MB (10,000,000) so the live Wells Fargo XML feed (~3.5 MB) parses cleanly without throwing an exception.
-3. **Commit & Deployment Details (`8b5499c`):**
-   - Committed and pushed in commit `8b5499c` (`Make job provider aggregation resilient and increase Wells Fargo size limit`).
-   - Deployed on production server with all 4 providers re-enabled in `/opt/jobmatcher/.env` (`JOB_SOURCES_ENABLED=GOOGLE_CAREERS,AMAZON,WELLS_FARGO,NVIDIA`) and `MATCHING_PROVIDER=gemini`.
-   - Production container `jobmatcher-backend-1` is running healthy with the latest build.
+### Incident 4: Non-Google Portal Matching Exclusion (Pushed in `db79280`)
+- **Symptom:** Only Google jobs appeared in search results; Amazon/NVIDIA jobs were omitted.
+- **Fix:** Created `JobLocationMatcher` for multi-country code parsing (`IND`/`IN`), added balanced candidate selection in `GeminiJobMatchingService`, and combined location fields in `AmazonJobsParser`.
 
 ---
 
-## Approved provider expansion — 2026-09-11
+## 7. Production Deployment, Environment Variables & Remote Access
 
-The approved job-source expansion was committed and pushed successfully in
-commit `b5ab565` (`Add approved job source providers`). The local `main`
-branch is aligned with `origin/main`, and the worktree is clean.
+### Environment Variables (`.env` / `application.properties`)
+```properties
+# Database
+DATABASE_URL=jdbc:postgresql://localhost:5432/jobfetcher
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=postgres
 
-- Added the `JobProvider` abstraction and adapted the existing Google Careers
-  client/parser behind it. `JobsService.fetchAndSaveGoogleJobs()` and the GET
-  `/api/jobs/search` behavior remain Google-only for compatibility.
-- Added bounded public-source clients, parsers, and providers for Amazon,
-  Wells Fargo, and NVIDIA. Amazon is paginated (three pages / 200 saved jobs
-  maximum) with repeated-ID/no-progress detection. Wells Fargo's unpaged XML
-  is response- and record-bounded, safely parsed with DTD/external entities
-  disabled, and locally query-filtered. NVIDIA reads only the public sitemap
-  and an immutable allowlisted NVIDIA job-page path, fetching at most 25
-  query-matching pages and extracting `JobPosting` JSON-LD.
-- New provider IDs are namespaced (`AMAZON:`, `WELLS_FARGO:`, `NVIDIA:`), so
-  the globally unique `jobs.external_id` remains source-safe. Existing
-  upsert/status behavior is preserved.
-- `POST /api/jobs/search` now invokes
-  `JobsService.fetchAndSaveApprovedJobs()`, which runs the configured approved
-  sources and surfaces a source-named failure rather than silently returning
-  no jobs. `app.job-sources.enabled` / `JOB_SOURCES_ENABLED` defaults to
-  `GOOGLE_CAREERS,AMAZON,WELLS_FARGO,NVIDIA`; use a comma-separated subset to
-  reduce development source work.
-- `RestClientConfig` now uses the JDK HTTP client with five-second connect and
-  ten-second read timeouts, and does not follow redirects. Amazon, Wells
-  Fargo, NVIDIA, JSON-LD/XML safety, URL allowlists, provider pagination, and
-  service aggregation have focused fixture/mock tests. No application
-  endpoints, browser automation, credentials, cookies, undocumented APIs,
-  Microsoft, or D. E. Shaw integrations were used.
-- Updated `README.md`, `application.properties`, backend source/tests, and
-  this handoff. Pre-existing frontend match-threshold changes were left
-  untouched.
+# OAuth & Security
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+FRONTEND_ORIGIN=http://localhost:5173
 
-Provider files added:
+# Job Matching & AI
+app.matching.provider=gemini
+app.gemini.api-key=your-gemini-api-key
+app.gemini.model=gemini-2.5-flash
 
-```text
-src/main/java/com/honey/jobfetcher/client/AmazonJobsClient.java
-src/main/java/com/honey/jobfetcher/client/NvidiaJobsClient.java
-src/main/java/com/honey/jobfetcher/client/SourceHttpClient.java
-src/main/java/com/honey/jobfetcher/client/WellsFargoJobsClient.java
-src/main/java/com/honey/jobfetcher/parser/AmazonJobsParser.java
-src/main/java/com/honey/jobfetcher/parser/NvidiaJobsParser.java
-src/main/java/com/honey/jobfetcher/parser/SafeXmlParser.java
-src/main/java/com/honey/jobfetcher/parser/WellsFargoJobsParser.java
-src/main/java/com/honey/jobfetcher/provider/ApprovedJobSourcesProperties.java
-src/main/java/com/honey/jobfetcher/provider/AmazonJobProvider.java
-src/main/java/com/honey/jobfetcher/provider/GoogleCareersJobProvider.java
-src/main/java/com/honey/jobfetcher/provider/JobProvider.java
-src/main/java/com/honey/jobfetcher/provider/JobQuery.java
-src/main/java/com/honey/jobfetcher/provider/JobSource.java
-src/main/java/com/honey/jobfetcher/provider/JobUrlPolicy.java
-src/main/java/com/honey/jobfetcher/provider/NvidiaJobProvider.java
-src/main/java/com/honey/jobfetcher/provider/WellsFargoJobProvider.java
+# Approved Sources
+app.job-sources.enabled=GOOGLE_CAREERS,AMAZON,WELLS_FARGO,NVIDIA
 ```
 
-Focused tests added:
+### Server & Deployment Paths
+- **Local Working Copy:** `D:\Projects\Job Fetcher`
+- **SSH Private Key:** `D:\oraclekeys\job-fetcher\ssh-key-2026-09-06.key`
+- **Production Server:** `ubuntu@161.118.165.140`
+- **Production Directory:** `/opt/jobmatcher`
+- **Production Compose File:** `/opt/jobmatcher/compose.production.yaml`
+- **Reverse Proxy Caddyfile:** `/opt/jobmatcher/Caddyfile`
 
-```text
-src/test/java/com/honey/jobfetcher/client/AmazonJobsClientTest.java
-src/test/java/com/honey/jobfetcher/client/NvidiaJobsClientTest.java
-src/test/java/com/honey/jobfetcher/parser/AmazonJobsParserTest.java
-src/test/java/com/honey/jobfetcher/parser/NvidiaJobsParserTest.java
-src/test/java/com/honey/jobfetcher/parser/WellsFargoJobsParserTest.java
-src/test/java/com/honey/jobfetcher/provider/AmazonJobProviderTest.java
-```
-
-Existing `JobsServiceTest` and `CriteriaSearchServiceTest` were updated for
-provider aggregation. `RestClientConfig`, `JobsService`, `CriteriaSearchService`,
-`application.properties`, and `README.md` were modified as described above.
-
-Validation after the provider change:
-
-```text
-.\mvnw.cmd -q test  passed
-frontend: npm run build  passed
-git diff --check  passed
-```
-
-## Latest completed work — 2026-09-07
-
-The project is out of testing mode and is configured for production matching:
-
-- Match results must score strictly above `80%`.
-- Criteria search uses `score > 80`.
-- `/api/jobs/matches` defaults to `threshold=80`.
-- The frontend requests `threshold=80` and displays `80%` in the UI.
-- The criteria-search test verifies that `80` is excluded and `81` is retained.
-
-The latest job-result feature is complete:
-
-- `Job Description` toggles the stored description inline.
-- `View on Job Portal` opens the available Google Careers detail page.
-- `Apply Now` opens the same available external URL.
-- `JobMatchResponse` and frontend types carry the job description.
-- Separate application and portal URLs are not currently available from the
-  parser, so both external buttons intentionally use `jobUrl`.
-
-Deployment and project work completed:
-
-- Frontend and backend CI/CD workflows are separate.
-- Backend CD builds ARM64 images with BuildKit caching.
-- Deployments use immutable commit SHA image tags.
-- Gemini matching and keyword fallback matching are supported.
-- Country/location filtering includes matching locations and remote jobs.
-- Gemini request/response JSON serialization was fixed.
-- Explanatory comments were added across human-maintained project source,
-  tests, frontend files, and workflows.
-- PostgreSQL data remains on the persistent Docker volume.
-- `HANDOFF.md` is ignored and must never be committed or pushed.
-
-Validation completed after the latest changes:
-
-```text
-git diff --check       passed
-./mvnw.cmd -q test     passed
-frontend: npm run build passed
-```
-
-The Gemini service may still return upstream HTTP 503 responses during high
-demand. That is independent of the threshold and location-filter behavior.
-
-## Exact local and server paths
-
-Windows working copy:
-
-```text
-D:\Projects\Job Fetcher
-```
-
-SSH private key used for the production server:
-
-```text
-D:\oraclekeys\job-fetcher\ssh-key-2026-09-06.key
-```
-
-Production Ubuntu deployment directory:
-
-```text
-/opt/jobmatcher
-```
-
-Production Compose file:
-
-```text
-/opt/jobmatcher/compose.production.yaml
-```
-
-Production reverse proxy configuration:
-
-```text
-/opt/jobmatcher/Caddyfile
-```
-
-Production environment file:
-
-```text
-/opt/jobmatcher/.env
-```
-
-The local environment file is:
-
-```text
-D:\Projects\Job Fetcher\.env
-```
-
-Both `.env` files contain secrets and must remain private.
-
-Useful SSH command from Windows PowerShell:
-
-```powershell
-ssh -i "D:\oraclekeys\job-fetcher\ssh-key-2026-09-06.key" ubuntu@161.118.165.140
-```
-
-Useful production commands:
-
+### Useful Production Management Commands
 ```bash
+# Connect to production server
+ssh -i "D:\oraclekeys\job-fetcher\ssh-key-2026-09-06.key" ubuntu@161.118.165.140
+
+# Check container status
 cd /opt/jobmatcher
 docker compose -f compose.production.yaml ps
+
+# Pull and redeploy latest image
 docker compose -f compose.production.yaml pull
 docker compose -f compose.production.yaml up -d
-docker logs --tail 200 jobmatcher-backend-1
+
+# Tail backend application logs
+docker logs --tail 200 -f jobmatcher-backend-1
+```
+
+---
+
+## 8. Build & Verification Commands
+
+```powershell
+# Run backend test suite (30 unit & integration tests)
+.\mvnw.cmd test
+
+# Run frontend build (TypeScript + Vite)
+Set-Location frontend
+npm run build
 ```
 
 Production container data paths:
