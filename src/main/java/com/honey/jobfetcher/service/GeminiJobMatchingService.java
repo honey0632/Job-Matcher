@@ -1,4 +1,4 @@
-// Uses Gemini to score jobs against extracted resume content.
+// Uses Gemini to score jobs against extracted resume content with keyword fallback.
 
 package com.honey.jobfetcher.service;
 
@@ -12,25 +12,37 @@ import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.model.Resume;
 import com.honey.jobfetcher.repository.JobsRepository;
 import com.honey.jobfetcher.repository.ResumeRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @ConditionalOnProperty(name = "app.matching.provider", havingValue = "gemini")
 public class GeminiJobMatchingService implements JobMatchingService {
 
+    private static final Logger logger = LoggerFactory.getLogger(GeminiJobMatchingService.class);
+
     private static final int MAX_AI_JOBS = 25;
     private static final int MAX_RESUME_CHARACTERS = 12000;
     private static final int MAX_JOB_CHARACTERS = 3500;
+
+    private static final Set<String> STOP_WORDS = Set.of(
+            "and", "the", "with", "for", "from", "that", "this",
+            "have", "has", "are", "you", "your", "our", "will"
+    );
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -83,9 +95,17 @@ public class GeminiJobMatchingService implements JobMatchingService {
             return List.of();
         }
 
-        Map<String, Integer> scores = requestScores(resume, candidates);
+        Map<String, Integer> scores;
+        try {
+            scores = requestScores(resume, candidates);
+        } catch (Exception exception) {
+            logger.warn("Gemini matching failed, falling back to keyword scoring: {}", exception.getMessage());
+            scores = fallbackKeywordScores(resume, candidates);
+        }
+
+        final Map<String, Integer> matchScores = scores;
         return candidates.stream()
-                .map(job -> JobMatchResponse.from(job, scores.getOrDefault(job.getExternalId(), 0)))
+                .map(job -> JobMatchResponse.from(job, matchScores.getOrDefault(job.getExternalId(), 0)))
                 .filter(match -> match.score() >= 0)
                 .sorted(Comparator.comparingInt(JobMatchResponse::score).reversed())
                 .limit(limit)
@@ -197,5 +217,61 @@ public class GeminiJobMatchingService implements JobMatchingService {
         return value.replaceFirst("^```(?:json)?\\s*", "")
                 .replaceFirst("\\s*```$", "")
                 .trim();
+    }
+
+    private Map<String, Integer> fallbackKeywordScores(Resume resume, List<Jobs> jobs) {
+        Set<String> resumeWords = keywords(resume.getExtractedText());
+        if (resumeWords.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, Integer> scores = new HashMap<>();
+        for (Jobs job : jobs) {
+            int score = calculateKeywordScore(job, resumeWords);
+            scores.put(job.getExternalId(), score);
+        }
+        return scores;
+    }
+
+    private int calculateKeywordScore(Jobs job, Set<String> resumeWords) {
+        Set<String> titleWords = keywords(job.getTitle() == null ? "" : job.getTitle());
+        Set<String> jobWords = keywords(
+                (job.getTitle() == null ? "" : job.getTitle()) + " "
+                        + (job.getDescription() == null ? "" : job.getDescription())
+        );
+
+        if (jobWords.isEmpty()) {
+            return 0;
+        }
+
+        long matchingJobWords = jobWords.stream()
+                .filter(resumeWords::contains)
+                .count();
+
+        long matchingTitleWords = titleWords.stream()
+                .filter(resumeWords::contains)
+                .count();
+
+        double baseRatio = (matchingJobWords * 100.0) / Math.min(jobWords.size(), Math.max(10, resumeWords.size()));
+
+        if (!titleWords.isEmpty() && matchingTitleWords > 0) {
+            double titleRatio = (matchingTitleWords * 100.0) / titleWords.size();
+            baseRatio = Math.max(baseRatio, titleRatio * 0.85 + baseRatio * 0.15);
+        }
+
+        int score = (int) Math.round(baseRatio);
+        return Math.min(100, Math.max(0, score));
+    }
+
+    private Set<String> keywords(String value) {
+        if (value == null || value.isBlank()) {
+            return Set.of();
+        }
+
+        return new HashSet<>(Arrays.stream(value.toLowerCase(Locale.ROOT)
+                        .split("[^a-z0-9+#.-]+"))
+                .filter(word -> word.length() >= 3)
+                .filter(word -> !STOP_WORDS.contains(word))
+                .toList());
     }
 }

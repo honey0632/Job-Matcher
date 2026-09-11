@@ -82,16 +82,33 @@ public class KeywordJobMatchingService implements JobMatchingService {
     }
 
     private JobMatchResponse match(Jobs job, Set<String> resumeWords) {
+        Set<String> titleWords = keywords(job.getTitle() == null ? "" : job.getTitle());
         Set<String> jobWords = keywords(
                 (job.getTitle() == null ? "" : job.getTitle()) + " "
                         + (job.getDescription() == null ? "" : job.getDescription())
         );
 
-        long matchingWords = resumeWords.stream()
-                .filter(jobWords::contains)
+        if (jobWords.isEmpty()) {
+            return JobMatchResponse.from(job, 0);
+        }
+
+        long matchingJobWords = jobWords.stream()
+                .filter(resumeWords::contains)
                 .count();
-        int score = (int) Math.round((matchingWords * 100.0) / resumeWords.size());
-        return JobMatchResponse.from(job, Math.min(score, 100));
+
+        long matchingTitleWords = titleWords.stream()
+                .filter(resumeWords::contains)
+                .count();
+
+        double baseRatio = (matchingJobWords * 100.0) / Math.min(jobWords.size(), Math.max(10, resumeWords.size()));
+
+        if (!titleWords.isEmpty() && matchingTitleWords > 0) {
+            double titleRatio = (matchingTitleWords * 100.0) / titleWords.size();
+            baseRatio = Math.max(baseRatio, titleRatio * 0.85 + baseRatio * 0.15);
+        }
+
+        int score = (int) Math.round(baseRatio);
+        return JobMatchResponse.from(job, Math.min(100, Math.max(0, score)));
     }
 
     private Set<String> keywords(String value) {
