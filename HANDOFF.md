@@ -321,6 +321,7 @@ The backend runtime target was upgraded from Java 21 to Java 25 LTS on 2026-09-1
 - `./mvnw.cmd clean test-compile -q`, `./mvnw.cmd clean test -q`, and `./mvnw.cmd clean verify` succeeded with Java 25.
 - The Maven test suite passed: 30 tests, 0 failures, 0 errors.
 - A direct-dependency CVE scan found no known issues.
+- Published to `main` as commit `e802159` (`Upgrade runtime to Java 25`).
 
 The test run emitted non-failing future-compatibility warnings: current Lombok code uses a deprecated `sun.misc.Unsafe` path, and Mockito dynamically attaches its Java agent. Monitor their next dependency releases before a JDK default blocks those behaviors.
 
