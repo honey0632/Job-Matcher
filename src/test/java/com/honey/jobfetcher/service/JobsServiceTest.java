@@ -116,20 +116,27 @@ class JobsServiceTest {
     }
 
     @Test
-    void identifiesTheFailingApprovedProvider() {
+    void skipsFailingApprovedProviderAndContinues() {
         JobProvider amazon = mock(JobProvider.class);
+        JobProvider google = mock(JobProvider.class);
+        Jobs googleJob = job("google-1", "Google job");
+
         when(amazon.source()).thenReturn(JobSource.AMAZON);
+        when(google.source()).thenReturn(JobSource.GOOGLE_CAREERS);
         when(amazon.fetchJobs("java")).thenThrow(new IllegalStateException("upstream timeout"));
+        when(google.fetchJobs("java")).thenReturn(List.of(googleJob));
+        when(jobsRepository.findByExternalId("google-1")).thenReturn(Optional.empty());
+        when(jobsRepository.save(any(Jobs.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
         ApprovedJobSourcesProperties sources = new ApprovedJobSourcesProperties();
-        sources.setEnabled(List.of("AMAZON"));
-        JobsService service = new JobsService(jobsRepository, List.of(amazon), sources);
+        sources.setEnabled(List.of("AMAZON", "GOOGLE_CAREERS"));
+        JobsService service = new JobsService(jobsRepository, List.of(amazon, google), sources);
 
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
-                () -> service.fetchAndSaveApprovedJobs("java")
-        );
+        List<Jobs> saved = service.fetchAndSaveApprovedJobs("java");
 
-        assertEquals("Failed to fetch AMAZON jobs", exception.getMessage());
+        assertEquals(List.of(googleJob), saved);
+        verify(amazon).fetchJobs("java");
+        verify(google).fetchJobs("java");
     }
 
     private Jobs job(String externalId, String title) {

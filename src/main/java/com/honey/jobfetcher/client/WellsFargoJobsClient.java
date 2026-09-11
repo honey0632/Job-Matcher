@@ -9,7 +9,7 @@ import java.net.URI;
  */
 @Component
 public class WellsFargoJobsClient {
-    static final int MAX_RESPONSE_CHARACTERS = 2_000_000;
+    static final int MAX_RESPONSE_CHARACTERS = 10_000_000;
     private static final URI JOBS_ENDPOINT = URI.create("https://www.wellsfargojobs.com/en/jobs/xml/");
 
     private final SourceHttpClient sourceHttpClient;
@@ -21,7 +21,7 @@ public class WellsFargoJobsClient {
     public String fetchAllJobs() {
         String response = sourceHttpClient.get(JOBS_ENDPOINT, "Wells Fargo Jobs");
         if (response.length() > MAX_RESPONSE_CHARACTERS) {
-            throw new IllegalStateException("Wells Fargo Jobs response exceeds the 2 MB safety limit");
+            throw new IllegalStateException("Wells Fargo Jobs response exceeds the 10 MB safety limit");
         }
         return response;
     }

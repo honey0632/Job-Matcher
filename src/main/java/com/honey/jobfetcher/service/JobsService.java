@@ -10,6 +10,8 @@ import com.honey.jobfetcher.provider.GoogleCareersJobProvider;
 import com.honey.jobfetcher.provider.JobProvider;
 import com.honey.jobfetcher.provider.JobSource;
 import com.honey.jobfetcher.repository.JobsRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,8 @@ import java.util.Map;
 
 @Service
 public class JobsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(JobsService.class);
 
     private final JobsRepository jobsRepository;
     private final Map<JobSource, JobProvider> providers;
@@ -60,7 +64,7 @@ public class JobsService {
 
     /**
      * Fetches every configured approved provider sequentially and persists
-     * results. A failing provider aborts this operation with its source named.
+     * results. A failing provider logs a warning and continues with remaining sources.
      */
     public List<Jobs> fetchAndSaveApprovedJobs(String query) {
         List<Jobs> savedJobs = new ArrayList<>();
@@ -68,7 +72,7 @@ public class JobsService {
             try {
                 savedJobs.addAll(fetchAndSave(providerFor(source), query));
             } catch (RuntimeException exception) {
-                throw new IllegalStateException("Failed to fetch " + source + " jobs", exception);
+                logger.warn("Failed to fetch {} jobs: {}", source, exception.getMessage());
             }
         }
         return List.copyOf(savedJobs);
