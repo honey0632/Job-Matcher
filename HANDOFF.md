@@ -21,7 +21,7 @@ Job Matcher is a full-stack Spring Boot + React platform designed to discover, i
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          │ REST API / Session Auth
 ┌────────────────────────────────────────▼────────────────────────────────────────┐
-│                          Spring Boot Backend (Java 21)                          │
+│                          Spring Boot Backend (Java 25)                          │
 │                                                                                 │
 │ ┌───────────────────────────┐    ┌────────────────────────────────────────────┐ │
 │ │ Auth & Session Controller │    │ CriteriaSearchService & JobsController     │ │
@@ -310,6 +310,27 @@ b6553da Build frontend assets on native builder
 ```
 
 The worktree was clean after the last change.
+
+## Latest session: Java 25 LTS runtime upgrade
+
+The backend runtime target was upgraded from Java 21 to Java 25 LTS on 2026-09-11.
+
+- `pom.xml` now sets `java.version` to `25`.
+- `Dockerfile` uses Eclipse Temurin 25 for both the Maven build stage and JRE runtime stage.
+- JDK 25.0.2 was installed locally at `C:\Users\honey kumar\AppData\Local\jdks\jdk-25.0.2`.
+- `./mvnw.cmd clean test-compile -q`, `./mvnw.cmd clean test -q`, and `./mvnw.cmd clean verify` succeeded with Java 25.
+- The Maven test suite passed: 30 tests, 0 failures, 0 errors.
+- A direct-dependency CVE scan found no known issues.
+
+The test run emitted non-failing future-compatibility warnings: current Lombok code uses a deprecated `sun.misc.Unsafe` path, and Mockito dynamically attaches its Java agent. Monitor their next dependency releases before a JDK default blocks those behaviors.
+
+### Follow-up: XML parser unit-test coverage
+
+Direct unit coverage was added for `src/main/java/com/honey/jobfetcher/parser/SafeXmlParser.java` in `src/test/java/com/honey/jobfetcher/parser/SafeXmlParserTest.java`.
+
+- Covers valid namespaced XML parsing, empty input rejection, malformed XML rejection, and DTD/external-entity rejection.
+- The focused test class passed under JDK 25.0.2.
+- The complete Maven suite passed after the addition: 34 tests, 0 failures, 0 errors, 0 skipped.
 
 ## Completed fixes
 

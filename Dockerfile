@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM maven:3.9.11-eclipse-temurin-21 AS build
+FROM --platform=$BUILDPLATFORM maven:3.9.11-eclipse-temurin-25 AS build
 
 WORKDIR /workspace
 COPY pom.xml mvnw ./
@@ -9,7 +9,7 @@ RUN ./mvnw -B dependency:go-offline
 COPY src src
 RUN ./mvnw -B clean package -DskipTests
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 WORKDIR /app
 RUN mkdir -p /app/data/resumes
