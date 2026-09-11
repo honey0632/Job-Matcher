@@ -86,6 +86,11 @@ Branch: `main`
 21. **`frontend/src/api.ts`**
     - Updated API contracts and endpoints for multi-source search and match querying.
 
+22. **`frontend/src/App.tsx` & `frontend/src/styles.css`**
+    - Built comprehensive homepage dashboard hero and quick actions.
+    - Added local storage caching for saved jobs alongside server sync to ensure bookmarked jobs never disappear on refresh/re-render.
+    - Updated company side panel workflow so only the selected company triggers active search and match scoring.
+
 ### Comprehensive Test Suite
 22. **`src/test/java/com/honey/jobfetcher/service/JobsServiceTest.java`**
     - Updated tests including `skipsFailingApprovedProviderAndContinues()` to verify resilient multi-provider behavior when individual sources fail.

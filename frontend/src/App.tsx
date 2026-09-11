@@ -14,12 +14,29 @@ const emptyPreferences: Preferences = {
 }
 
 const COMPANIES = [
-  { id: 'ALL', name: 'All Companies', icon: '🌐' },
-  { id: 'GOOGLE_CAREERS', name: 'Google Careers', icon: '🔵' },
-  { id: 'AMAZON', name: 'Amazon Jobs', icon: '🟧' },
-  { id: 'WELLS_FARGO', name: 'Wells Fargo', icon: '🔴' },
-  { id: 'NVIDIA', name: 'NVIDIA Jobs', icon: '🟢' },
-]
+  { id: 'ALL', name: 'All Companies', icon: '🌐', summary: 'Everything' },
+  { id: 'GOOGLE_CAREERS', name: 'Google Careers', icon: '🔵', summary: 'Search Google roles' },
+  { id: 'AMAZON', name: 'Amazon Jobs', icon: '🟧', summary: 'Search Amazon roles' },
+  { id: 'WELLS_FARGO', name: 'Wells Fargo', icon: '🔴', summary: 'Search Wells Fargo roles' },
+  { id: 'NVIDIA', name: 'NVIDIA Jobs', icon: '🟢', summary: 'Search NVIDIA roles' },
+] as const
+
+const SAVED_JOBS_STORAGE_KEY = 'job-fetcher.saved-jobs.v1'
+
+function readStoredSavedJobs(): Match[] {
+  try {
+    const stored = localStorage.getItem(SAVED_JOBS_STORAGE_KEY)
+    if (!stored) return []
+    const parsed = JSON.parse(stored) as Match[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeStoredSavedJobs(jobs: Match[]) {
+  localStorage.setItem(SAVED_JOBS_STORAGE_KEY, JSON.stringify(jobs))
+}
 
 function LegalLinks() {
   return (
@@ -105,11 +122,17 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [view, setView] = useState<View>('home')
   const [preferences, setPreferences] = useState(emptyPreferences)
-  const [savedJobs, setSavedJobs] = useState<Match[]>([])
-  const [savedJobIds, setSavedJobIds] = useState<Set<number>>(new Set())
+  const [savedJobs, setSavedJobs] = useState<Match[]>(() => readStoredSavedJobs())
+  const [savedJobIds, setSavedJobIds] = useState<Set<number>>(() => new Set(readStoredSavedJobs().map(job => job.jobId).filter((id): id is number => typeof id === 'number')))
   const [selectedCompany, setSelectedCompany] = useState<string>('ALL')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+
+  function syncSavedJobs(nextJobs: Match[]) {
+    setSavedJobs(nextJobs)
+    setSavedJobIds(new Set(nextJobs.map(job => job.jobId).filter((id): id is number => typeof id === 'number')))
+    writeStoredSavedJobs(nextJobs)
+  }
 
   useEffect(() => {
     api.me().then(setUser).catch(() => setUser(null))
@@ -123,9 +146,13 @@ export default function App() {
 
   function loadSavedJobs() {
     api.getSavedJobs().then(jobs => {
-      setSavedJobs(jobs)
-      setSavedJobIds(new Set(jobs.map(j => j.jobId).filter((id): id is number => id !== undefined)))
-    }).catch(() => undefined)
+      syncSavedJobs(jobs)
+    }).catch(() => {
+      const fallbackJobs = readStoredSavedJobs()
+      if (fallbackJobs.length) {
+        syncSavedJobs(fallbackJobs)
+      }
+    })
   }
 
   async function toggleSaveJob(job: Match) {
@@ -134,17 +161,13 @@ export default function App() {
       const isSaved = savedJobIds.has(job.jobId)
       if (isSaved) {
         await api.unsaveJob(job.jobId)
-        setSavedJobIds(prev => {
-          const next = new Set(prev)
-          next.delete(job.jobId!)
-          return next
-        })
-        setSavedJobs(prev => prev.filter(j => j.jobId !== job.jobId))
+        const nextJobs = savedJobs.filter(j => j.jobId !== job.jobId)
+        syncSavedJobs(nextJobs)
         setMessage('Job removed from saved.')
       } else {
         const saved = await api.saveJob(job.jobId, job.score)
-        setSavedJobIds(prev => new Set(prev).add(job.jobId!))
-        setSavedJobs(prev => [saved, ...prev.filter(j => j.jobId !== job.jobId)])
+        const nextJobs = [saved, ...savedJobs.filter(j => j.jobId !== job.jobId)]
+        syncSavedJobs(nextJobs)
         setMessage('Job saved successfully!')
       }
     } catch {
@@ -298,6 +321,33 @@ function Home({
       <h1>Welcome back, {user.displayName || user.email?.split('@')[0]}! 👋</h1>
       <p className="muted">Your personalized job fetcher & AI matching center.</p>
 
+      <section className="homepage-hero card">
+        <div>
+          <p className="eyebrow">JOB MATCHER</p>
+          <h1>Find your next role faster.</h1>
+          <p className="muted">Track the right employers, keep matching against your resume, and save only the opportunities worth revisiting.</p>
+          <div className="quick-actions">
+            <button className="button primary" onClick={() => onNavigate('search')}>Search jobs</button>
+            <button className="button secondary" onClick={() => onNavigate('saved')}>Saved roles ({savedCount})</button>
+            <button className="button secondary" onClick={() => onNavigate('profile')}>Update profile</button>
+          </div>
+        </div>
+        <div className="hero-summary">
+          <div>
+            <span className="label">Role</span>
+            <strong>{preferences.desiredRole || 'Not set yet'}</strong>
+          </div>
+          <div>
+            <span className="label">Location</span>
+            <strong>{preferences.country || 'Choose a country'}</strong>
+          </div>
+          <div>
+            <span className="label">Experience</span>
+            <strong>{preferences.experienceYears ? `${preferences.experienceYears} years` : 'Add experience'}</strong>
+          </div>
+        </div>
+      </section>
+
       <div className="dashboard-grid">
         <div className="card stat-card">
           <h3>Target Role</h3>
@@ -322,19 +372,16 @@ function Home({
       </div>
 
       <div className="company-section">
-        <h2>Company Search Panel</h2>
-        <p className="muted">Select a company below to run targeted search & matching for that specific company.</p>
+        <h2>Company Focus Panel</h2>
+        <p className="muted">Open one company and only that source will run a match. Save the roles you want to revisit later.</p>
         <div className="company-grid">
           {COMPANIES.filter(c => c.id !== 'ALL').map(comp => (
-            <div
-              key={comp.id}
-              className="company-card"
-              onClick={() => onSelectCompany(comp.id)}
-            >
-              <span className="company-icon">{comp.icon}</span>
-              <span className="company-name">{comp.name}</span>
-              <button className="button primary" style={{ width: '100%', marginTop: '8px', fontSize: '13px' }}>
-                Search {comp.name.split(' ')[0]}
+            <div key={comp.id} className="company-card">
+              <button type="button" className="company-card-button" onClick={() => onSelectCompany(comp.id)}>
+                <span className="company-icon">{comp.icon}</span>
+                <span className="company-name">{comp.name}</span>
+                <span className="company-summary">{comp.summary}</span>
+                <span className="button primary company-trigger">Search {comp.name.split(' ')[0]}</span>
               </button>
             </div>
           ))}
@@ -437,13 +484,21 @@ function Search({
     }
   }
 
+  useEffect(() => {
+    if (selectedCompany === 'ALL') {
+      setMatches([])
+      return
+    }
+    void submit()
+  }, [selectedCompany])
+
   const selectedCompObj = COMPANIES.find(c => c.id === selectedCompany) || COMPANIES[0]
 
   return (
     <section>
       <p className="eyebrow">DISCOVER</p>
       <h1>Search & Match Jobs</h1>
-      <p className="muted">Select a company from the side panel to fetch & score jobs from that specific source only.</p>
+      <p className="muted">Choose one company at a time. Only the open company triggers its search and match pass.</p>
 
       <div className="search-layout">
         <aside className="company-side-panel">
@@ -466,9 +521,13 @@ function Search({
               {loading ? `Matching ${selectedCompObj.name}…` : `Search & Match ${selectedCompObj.name}`}
             </button>
           </form>
+          <div className="company-status">
+            <span className="badge-company">Current source</span>
+            <strong>{selectedCompObj.name}</strong>
+          </div>
           <JobList
             jobs={matches}
-            empty={`Click "Search & Match ${selectedCompObj.name}" to discover roles matched to your resume.`}
+            empty={selectedCompany === 'ALL' ? 'Select a company to start a focused match run.' : `No roles matched for ${selectedCompObj.name} yet. Try another company or update your profile.`}
             savedJobIds={savedJobIds}
             onToggleSave={onToggleSave}
           />
