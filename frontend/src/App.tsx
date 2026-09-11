@@ -377,7 +377,7 @@ function Home({
         <h2>Company Focus Panel</h2>
         <p className="muted">Open one company and only that source will run a match. Save the roles you want to revisit later.</p>
         <div className="company-grid">
-          {COMPANIES.filter(c => c.id !== 'ALL').map(comp => (
+          {COMPANIES.map(comp => (
             <div key={comp.id} className="company-card">
               <button type="button" className="company-card-button" onClick={() => onSelectCompany(comp.id)}>
                 <span className="company-icon">{comp.icon}</span>
