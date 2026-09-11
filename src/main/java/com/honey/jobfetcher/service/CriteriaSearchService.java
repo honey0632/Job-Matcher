@@ -17,7 +17,8 @@ import java.util.Locale;
 @Service
 public class CriteriaSearchService {
 
-    private static final int MATCH_THRESHOLD = 80;
+    // A 0% threshold exposes every result returned by the matching provider.
+    private static final int MATCH_THRESHOLD = 0;
     private static final int MAX_RESULTS = 100;
 
     private final JobsService jobsService;
@@ -45,6 +46,7 @@ public class CriteriaSearchService {
             } catch (IllegalArgumentException e) {
                 jobsService.fetchAndSaveApprovedJobs(query);
             }
+        // All-company matching is deferred until cross-provider matching is needed again.
         } else {
             jobsService.fetchAndSaveApprovedJobs(query);
         }
@@ -57,7 +59,7 @@ public class CriteriaSearchService {
 
         List<JobMatchResponse> matches = jobMatchingService.findMatches(resume.getId(), MAX_RESULTS, request.country(), sourceFilter)
                 .stream()
-                .filter(match -> match.score() > MATCH_THRESHOLD)
+            .filter(match -> match.score() >= MATCH_THRESHOLD)
                 .toList();
 
         if (sourceFilter != null && !sourceFilter.isBlank() && !"ALL".equalsIgnoreCase(sourceFilter)) {

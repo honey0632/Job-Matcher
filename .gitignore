@@ -9,6 +9,7 @@ HANDOFF.md
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+.aiassistant
 
 ### STS ###
 .apt_generated

@@ -29,7 +29,7 @@ class KeywordJobMatchingServiceTest {
 
     @Test
     void ranksJobsByKeywordOverlap() {
-        // Both jobs are in the requested country; only the relevant job should score.
+        // Both jobs are in the requested country; the 0% threshold retains both results.
         Resume resume = new Resume();
         resume.setExtractedText("Java Spring PostgreSQL backend engineer");
 
@@ -59,9 +59,11 @@ class KeywordJobMatchingServiceTest {
 
         var matches = service.findMatches(1L, 10, "India");
 
-        assertEquals(1, matches.size());
+        assertEquals(2, matches.size());
         assertEquals("job-1", matches.get(0).externalId());
         assertTrue(matches.get(0).score() > 0);
+        assertEquals("job-2", matches.get(1).externalId());
+        assertEquals(0, matches.get(1).score());
     }
 
     @Test

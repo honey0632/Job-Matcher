@@ -14,7 +14,9 @@ const emptyPreferences: Preferences = {
 }
 
 const COMPANIES = [
-  { id: 'ALL', name: 'All Companies', icon: '🌐', summary: 'Everything' },
+  // Temporarily disabled for testing. Re-enable this block only when we intentionally want
+  // a cross-company / "all companies" match run.
+  // { id: 'ALL', name: 'All Companies', icon: '🌐', summary: 'Everything' },
   { id: 'GOOGLE_CAREERS', name: 'Google Careers', icon: '🔵', summary: 'Search Google roles' },
   { id: 'AMAZON', name: 'Amazon Jobs', icon: '🟧', summary: 'Search Amazon roles' },
   { id: 'WELLS_FARGO', name: 'Wells Fargo', icon: '🔴', summary: 'Search Wells Fargo roles' },
@@ -124,7 +126,7 @@ export default function App() {
   const [preferences, setPreferences] = useState(emptyPreferences)
   const [savedJobs, setSavedJobs] = useState<Match[]>(() => readStoredSavedJobs())
   const [savedJobIds, setSavedJobIds] = useState<Set<number>>(() => new Set(readStoredSavedJobs().map(job => job.jobId).filter((id): id is number => typeof id === 'number')))
-  const [selectedCompany, setSelectedCompany] = useState<string>('ALL')
+  const [selectedCompany, setSelectedCompany] = useState<string>('GOOGLE_CAREERS')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -476,7 +478,7 @@ function Search({
     try {
       const criteria: Preferences = {
         ...preferences,
-        source: selectedCompany === 'ALL' ? undefined : selectedCompany,
+        source: selectedCompany,
       }
       setMatches(await api.searchJobs(criteria))
     } finally {
@@ -485,10 +487,8 @@ function Search({
   }
 
   useEffect(() => {
-    if (selectedCompany === 'ALL') {
-      setMatches([])
-      return
-    }
+    // The "All Companies" mode is intentionally disabled for now. We only run single-company
+    // search passes while confirming providers such as Amazon, Wells Fargo, and NVIDIA.
     void submit()
   }, [selectedCompany])
 
@@ -554,7 +554,7 @@ function Matches({
   return (
     <section>
       <p className="eyebrow">RECOMMENDED</p>
-      <h1>Your matches above 80%.</h1>
+      <h1>Your matches above 0% (testing mode).</h1>
       {loading ? <p className="muted">Loading matches…</p> : (
         <JobList
           jobs={matches}

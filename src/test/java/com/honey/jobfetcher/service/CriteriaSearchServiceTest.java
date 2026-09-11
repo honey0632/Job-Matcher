@@ -33,9 +33,8 @@ class CriteriaSearchServiceTest {
     private ResumeRepository resumeRepository;
 
     @Test
-    void returnsMatchesAboveEightyPercent() {
-        // The test confirms that only strong matches are included while the
-        // requested search location is preserved.
+        void returnsMatchesAtOrAboveZeroPercentDuringProviderVerification() {
+                // The 0% threshold keeps source-specific provider results visible.
         User user = new User();
         user.setId(7L);
 
@@ -45,8 +44,8 @@ class CriteriaSearchServiceTest {
         when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
                 .thenReturn(Optional.of(resume));
         when(jobMatchingService.findMatches(11L, 100, "India", null)).thenReturn(List.of(
-                new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 81),
-                new JobMatchResponse(2L, "low", "Low", "Google", "India", "Description", "url", 80)
+                new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 1),
+                new JobMatchResponse(2L, "low", "Low", "Google", "India", "Description", "url", 0)
         ));
 
         CriteriaSearchService service = new CriteriaSearchService(
@@ -60,7 +59,7 @@ class CriteriaSearchServiceTest {
                 new JobSearchRequest("India", 3, "Backend Engineer")
         );
 
-        assertEquals(1, results.size());
+        assertEquals(2, results.size());
         assertEquals("high", results.get(0).externalId());
         verify(jobsService).fetchAndSaveApprovedJobs(anyString());
     }

@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class JobMatchingControllerTest {
 
     @Test
-    void returnsOnlyMatchesStrictlyAboveEightyPercent() {
+        void returnsMatchesAtOrAboveZeroPercent() {
         AuthenticatedUserService authenticatedUserService = mock(AuthenticatedUserService.class);
         JobMatchingService jobMatchingService = mock(JobMatchingService.class);
         ResumeRepository resumeRepository = mock(ResumeRepository.class);
@@ -34,8 +34,8 @@ class JobMatchingControllerTest {
         when(resumeRepository.findTopByUserIdAndStatusOrderByUploadedAtDesc(7L, "EXTRACTED"))
                 .thenReturn(Optional.of(resume));
         when(jobMatchingService.findMatches(11L, 20, "")).thenReturn(List.of(
-                new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 81),
-                new JobMatchResponse(2L, "boundary", "Boundary", "Google", "India", "Description", "url", 80)
+                new JobMatchResponse(1L, "high", "High", "Google", "India", "Description", "url", 1),
+                new JobMatchResponse(2L, "boundary", "Boundary", "Google", "India", "Description", "url", 0)
         ));
 
         JobMatchingController controller = new JobMatchingController(
@@ -46,7 +46,7 @@ class JobMatchingControllerTest {
 
         List<JobMatchResponse> results = controller.findMatches(authentication, 20, "");
 
-        assertEquals(1, results.size());
+        assertEquals(2, results.size());
         assertEquals("high", results.getFirst().externalId());
     }
 }
