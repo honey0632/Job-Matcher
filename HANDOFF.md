@@ -333,6 +333,26 @@ Direct unit coverage was added for `src/main/java/com/honey/jobfetcher/parser/Sa
 - The focused test class passed under JDK 25.0.2.
 - The complete Maven suite passed after the addition: 34 tests, 0 failures, 0 errors, 0 skipped.
 
+### Follow-up: focused company matching and 0% threshold
+
+The All Companies matching option is commented out in `frontend/src/App.tsx` and deferred for future implementation. The active workflow runs a search and matching pass for the selected provider only.
+
+The match threshold is intentionally inclusive at 0% in `JobMatchingController`, `CriteriaSearchService`, and `KeywordJobMatchingService`, so valid fetched jobs remain visible even when their current match score is zero.
+
+### Follow-up: CI/CD repair
+
+The Java 25 runtime upgrade caused Backend CI to fail because `.github/workflows/backend-ci.yml` still installed Java 21. The workflow now installs Temurin 25.
+
+Frontend CI failed because `frontend/src/App.tsx` filtered out `ALL` after that option had already been commented out of the typed company list, producing TypeScript error `TS2367`. The redundant filter was removed and the frontend production build passes.
+
+Both Backend CD and Frontend CD previously attempted their publish jobs after a failed triggering CI run. Their publish jobs now require the triggering `workflow_run` to succeed, while manual dispatch remains permitted. Local validation passed: frontend production build succeeded and Maven completed 34 tests with 0 failures and 0 errors under JDK 25.0.2. Docker Desktop was unavailable locally, so container image builds were not rerun.
+
+### Follow-up: 80% auto-save and 60% match threshold
+
+- Automatic bookmarking (`SavedJobService.autoSaveHighMatches`) now triggers for job matches with a score > 80%.
+- The display threshold across `JobMatchingController`, `CriteriaSearchService`, `KeywordJobMatchingService`, and `GeminiJobMatchingService` is set to 60%, showing all matches with score >= 60%.
+- Frontend landing page copy and matches view headers were updated accordingly.
+
 ## Completed fixes
 
 ### Legal pages and routing
