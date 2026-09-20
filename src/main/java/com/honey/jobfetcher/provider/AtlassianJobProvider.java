@@ -1,26 +1,25 @@
 package com.honey.jobfetcher.provider;
 
-import com.honey.jobfetcher.client.AtlassianJobsClient;
+import com.honey.jobfetcher.client.MuseJobsClient;
 import com.honey.jobfetcher.model.Jobs;
-import com.honey.jobfetcher.parser.AtlassianJobsParser;
+import com.honey.jobfetcher.parser.MuseJobsParser;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
 public class AtlassianJobProvider implements JobProvider {
-    private final AtlassianJobsClient atlassianJobsClient;
-    private final AtlassianJobsParser atlassianJobsParser;
+    private final MuseJobsClient jobsClient;
+    private final MuseJobsParser jobsParser;
 
-    public AtlassianJobProvider(AtlassianJobsClient atlassianJobsClient, AtlassianJobsParser atlassianJobsParser) {
-        this.atlassianJobsClient = atlassianJobsClient;
-        this.atlassianJobsParser = atlassianJobsParser;
+    public AtlassianJobProvider(MuseJobsClient jobsClient, MuseJobsParser jobsParser) {
+        this.jobsClient = jobsClient;
+        this.jobsParser = jobsParser;
     }
 
     @Override
     public List<Jobs> fetchJobs(String query) {
-        String html = atlassianJobsClient.fetchSearchPage(query);
-        return atlassianJobsParser.parse(html);
+        return jobsParser.parse(jobsClient.fetchJobs("Atlassian", query), source(), query);
     }
 
     @Override

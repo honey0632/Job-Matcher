@@ -1,26 +1,25 @@
 package com.honey.jobfetcher.provider;
 
-import com.honey.jobfetcher.client.MetaCareersClient;
+import com.honey.jobfetcher.client.MuseJobsClient;
 import com.honey.jobfetcher.model.Jobs;
-import com.honey.jobfetcher.parser.MetaJobsParser;
+import com.honey.jobfetcher.parser.MuseJobsParser;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
 public class MetaJobProvider implements JobProvider {
-    private final MetaCareersClient metaCareersClient;
-    private final MetaJobsParser metaJobsParser;
+    private final MuseJobsClient jobsClient;
+    private final MuseJobsParser jobsParser;
 
-    public MetaJobProvider(MetaCareersClient metaCareersClient, MetaJobsParser metaJobsParser) {
-        this.metaCareersClient = metaCareersClient;
-        this.metaJobsParser = metaJobsParser;
+    public MetaJobProvider(MuseJobsClient jobsClient, MuseJobsParser jobsParser) {
+        this.jobsClient = jobsClient;
+        this.jobsParser = jobsParser;
     }
 
     @Override
     public List<Jobs> fetchJobs(String query) {
-        String html = metaCareersClient.fetchSearchPage(query);
-        return metaJobsParser.parse(html);
+        return jobsParser.parse(jobsClient.fetchJobs("Meta", query), source(), query);
     }
 
     @Override

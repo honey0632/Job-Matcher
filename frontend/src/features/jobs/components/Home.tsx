@@ -148,9 +148,9 @@ export function Home({
           </div>
           <div>
             <div className="text-xl font-bold tracking-tight text-zinc-100">
-              4 Providers
+              12 Providers
             </div>
-            <p className="text-xs text-zinc-500 mt-1">18 company career channels available</p>
+            <p className="text-xs text-zinc-500 mt-1">12 verified company career channels available</p>
           </div>
           <Button variant="secondary" size="sm" className="w-full text-xs" onClick={() => onNavigate('search')}>
             Run Pipeline

@@ -2,39 +2,46 @@ package com.honey.jobfetcher.parser;
 
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.provider.JobSource;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class TcsJobsParser {
-    public List<Jobs> parse(String html) {
-        List<Jobs> jobs = new ArrayList<>();
-        Document doc = Jsoup.parse(html);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-        Elements jobElements = doc.select("div.job-card");
-        for (Element jobElement : jobElements) {
-            Jobs job = new Jobs();
-
-            String title = jobElement.select("h3.job-title").text();
-            String location = jobElement.select("span.job-location").text();
-            String id = jobElement.attr("data-job-id");
-            String url = "https://www.tcs.com" + jobElement.select("a.job-link").attr("href");
-
-            job.setTitle(title);
-            job.setLocation(location);
-            job.setJobUrl(url);
-            job.setExternalId(JobSource.TCS.name() + ":" + id);
-            job.setSource(JobSource.TCS.name());
-
-            jobs.add(job);
+    public List<Jobs> parse(String response) {
+        if (response == null || response.isBlank()) {
+            throw new IllegalArgumentException("TCS Jobs response must not be blank");
         }
 
-        return jobs;
+        try {
+            List<Jobs> jobs = new ArrayList<>();
+            for (JsonNode posting : objectMapper.readTree(response).path("jobs")) {
+                String id = posting.path("id").asText(null);
+                String title = posting.path("title").asText(null);
+                String url = posting.path("absolute_url").asText(null);
+                if (id == null || title == null || url == null) {
+                    continue;
+                }
+
+                Jobs job = new Jobs();
+                job.setExternalId(JobSource.TCS.name() + ":" + id);
+                job.setTitle(title);
+                job.setCompany("Tata Consultancy Services");
+                job.setLocation(posting.path("location").path("name").asText(null));
+                job.setDescription(posting.path("content").asText(null));
+                job.setJobUrl(url);
+                job.setSource(JobSource.TCS.name());
+                job.setStatus(Jobs.STATUS_NO_ACTION);
+                jobs.add(job);
+            }
+            return jobs;
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("Unable to parse TCS Greenhouse job data", exception);
+        }
     }
 }

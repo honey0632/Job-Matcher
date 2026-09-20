@@ -1,26 +1,25 @@
 package com.honey.jobfetcher.provider;
 
-import com.honey.jobfetcher.client.WiproJobsClient;
+import com.honey.jobfetcher.client.MuseJobsClient;
 import com.honey.jobfetcher.model.Jobs;
-import com.honey.jobfetcher.parser.WiproJobsParser;
+import com.honey.jobfetcher.parser.MuseJobsParser;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
 public class WiproJobProvider implements JobProvider {
-    private final WiproJobsClient wiproJobsClient;
-    private final WiproJobsParser wiproJobsParser;
+    private final MuseJobsClient jobsClient;
+    private final MuseJobsParser jobsParser;
 
-    public WiproJobProvider(WiproJobsClient wiproJobsClient, WiproJobsParser wiproJobsParser) {
-        this.wiproJobsClient = wiproJobsClient;
-        this.wiproJobsParser = wiproJobsParser;
+    public WiproJobProvider(MuseJobsClient jobsClient, MuseJobsParser jobsParser) {
+        this.jobsClient = jobsClient;
+        this.jobsParser = jobsParser;
     }
 
     @Override
     public List<Jobs> fetchJobs(String query) {
-        String html = wiproJobsClient.fetchSearchPage(query);
-        return wiproJobsParser.parse(html);
+        return jobsParser.parse(jobsClient.fetchJobs("Wipro", query), source(), query);
     }
 
     @Override

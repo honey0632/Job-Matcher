@@ -1,26 +1,25 @@
 package com.honey.jobfetcher.provider;
 
-import com.honey.jobfetcher.client.UberJobsClient;
+import com.honey.jobfetcher.client.MuseJobsClient;
 import com.honey.jobfetcher.model.Jobs;
-import com.honey.jobfetcher.parser.UberJobsParser;
+import com.honey.jobfetcher.parser.MuseJobsParser;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
 public class UberJobProvider implements JobProvider {
-    private final UberJobsClient uberJobsClient;
-    private final UberJobsParser uberJobsParser;
+    private final MuseJobsClient jobsClient;
+    private final MuseJobsParser jobsParser;
 
-    public UberJobProvider(UberJobsClient uberJobsClient, UberJobsParser uberJobsParser) {
-        this.uberJobsClient = uberJobsClient;
-        this.uberJobsParser = uberJobsParser;
+    public UberJobProvider(MuseJobsClient jobsClient, MuseJobsParser jobsParser) {
+        this.jobsClient = jobsClient;
+        this.jobsParser = jobsParser;
     }
 
     @Override
     public List<Jobs> fetchJobs(String query) {
-        String html = uberJobsClient.fetchSearchPage(query);
-        return uberJobsParser.parse(html);
+        return jobsParser.parse(jobsClient.fetchJobs("Uber", query), source(), query);
     }
 
     @Override

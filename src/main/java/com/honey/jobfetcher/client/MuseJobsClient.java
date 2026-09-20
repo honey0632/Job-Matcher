@@ -6,37 +6,37 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @Component
-public class TcsJobsClient {
+public class MuseJobsClient {
     private final RestClient restClient;
 
-    public TcsJobsClient(RestClient.Builder restClientBuilder) {
+    public MuseJobsClient(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
-                .baseUrl("https://boards-api.greenhouse.io")
+                .baseUrl("https://www.themuse.com")
                 .defaultHeader(HttpHeaders.USER_AGENT, "JobFetcher/1.0")
                 .build();
     }
 
-    public String fetchSearchPage(String query) {
-        if (query == null || query.isBlank()) {
-            throw new IllegalArgumentException("Search query must not be blank");
+    public String fetchJobs(String company, String query) {
+        if (company == null || company.isBlank() || query == null || query.isBlank()) {
+            throw new IllegalArgumentException("Company and search query must not be blank");
         }
 
         try {
             String response = restClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/v1/boards/tcs/jobs")
-                            .queryParam("content", "true")
-                            .queryParam("per_page", "100")
+                            .path("/api/public/jobs")
+                            .queryParam("company", company)
+                            .queryParam("page", 0)
                             .build())
                     .retrieve()
                     .body(String.class);
             if (response == null || response.isBlank()) {
-                throw new IllegalStateException("TCS Jobs returned an empty response");
+                throw new IllegalStateException("The Muse returned an empty response");
             }
             return response;
         } catch (RestClientResponseException exception) {
             throw new IllegalStateException(
-                    "TCS Jobs request failed with status " + exception.getStatusCode().value(),
+                    "The Muse request failed with status " + exception.getStatusCode().value(),
                     exception
             );
         }

@@ -42,7 +42,7 @@ export function LandingPage() {
                 Your Resume, Mapped Directly to Top Careers.
               </h1>
               <p className="text-base md:text-lg text-zinc-400 leading-relaxed">
-                Ingest live public career feeds from 18 leading companies, including Google, Amazon, Microsoft, Apple, and NVIDIA. Align your background with semantic AI-scored precision.
+                Ingest live public career feeds from 12 verified company career channels. Align your background with semantic AI-scored precision.
               </p>
               <div className="flex items-center justify-center gap-3 pt-4">
                 <Button size="lg" onClick={() => setShowLogin(true)}>

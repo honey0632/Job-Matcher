@@ -1,26 +1,25 @@
 package com.honey.jobfetcher.provider;
 
-import com.honey.jobfetcher.client.SalesforceJobsClient;
+import com.honey.jobfetcher.client.MuseJobsClient;
 import com.honey.jobfetcher.model.Jobs;
-import com.honey.jobfetcher.parser.SalesforceJobsParser;
+import com.honey.jobfetcher.parser.MuseJobsParser;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
 public class SalesforceJobProvider implements JobProvider {
-    private final SalesforceJobsClient salesforceJobsClient;
-    private final SalesforceJobsParser salesforceJobsParser;
+    private final MuseJobsClient jobsClient;
+    private final MuseJobsParser jobsParser;
 
-    public SalesforceJobProvider(SalesforceJobsClient salesforceJobsClient, SalesforceJobsParser salesforceJobsParser) {
-        this.salesforceJobsClient = salesforceJobsClient;
-        this.salesforceJobsParser = salesforceJobsParser;
+    public SalesforceJobProvider(MuseJobsClient jobsClient, MuseJobsParser jobsParser) {
+        this.jobsClient = jobsClient;
+        this.jobsParser = jobsParser;
     }
 
     @Override
     public List<Jobs> fetchJobs(String query) {
-        String html = salesforceJobsClient.fetchSearchPage(query);
-        return salesforceJobsParser.parse(html);
+        return jobsParser.parse(jobsClient.fetchJobs("Salesforce", query), source(), query);
     }
 
     @Override

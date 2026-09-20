@@ -2,8 +2,8 @@ package com.honey.jobfetcher.client;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @Component
 public class AdobeJobsClient {
@@ -11,7 +11,7 @@ public class AdobeJobsClient {
 
     public AdobeJobsClient(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
-                .baseUrl("https://www.adobe.com")
+                .baseUrl("https://adobe.wd5.myworkdayjobs.com")
                 .defaultHeader(HttpHeaders.USER_AGENT, "JobFetcher/1.0")
                 .build();
     }
@@ -22,11 +22,12 @@ public class AdobeJobsClient {
         }
 
         try {
-            String response = restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                        .path("/careers/search-results")
-                        .queryParam("q", query.trim())
-                        .build())
+            String response = restClient.post()
+                    .uri("/wday/cxs/adobe/external_experienced/jobs")
+                    .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                    .body("""
+                            {"appliedFacets":{},"limit":100,"offset":0,"searchText":"%s"}
+                            """.formatted(escapeJson(query.trim())))
                     .retrieve()
                     .body(String.class);
 
@@ -42,5 +43,9 @@ public class AdobeJobsClient {
                     exception
             );
         }
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
