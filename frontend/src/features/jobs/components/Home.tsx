@@ -150,7 +150,7 @@ export function Home({
             <div className="text-xl font-bold tracking-tight text-zinc-100">
               4 Providers
             </div>
-            <p className="text-xs text-zinc-500 mt-1">Google, Amazon, Wells Fargo, NVIDIA</p>
+            <p className="text-xs text-zinc-500 mt-1">18 company career channels available</p>
           </div>
           <Button variant="secondary" size="sm" className="w-full text-xs" onClick={() => onNavigate('search')}>
             Run Pipeline
