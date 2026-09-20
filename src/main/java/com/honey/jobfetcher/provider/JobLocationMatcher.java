@@ -1,62 +1,26 @@
 package com.honey.jobfetcher.provider;
 
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
-/**
- * Normalizes and matches job locations against user country/location criteria.
- */
-public final class JobLocationMatcher {
+public class JobLocationMatcher {
 
-    private static final Map<String, Set<String>> COUNTRY_SYNONYMS = Map.ofEntries(
-            Map.entry("india", Set.of("in", "ind", "india", "bengaluru", "bangalore", "hyderabad", "mumbai", "pune", "delhi", "noida", "gurgaon", "gurugram", "chennai", "kolkata")),
-            Map.entry("united states", Set.of("us", "usa", "u.s.", "u.s.a.", "united states", "united states of america", "america", "seattle", "austin", "california", "new york", "texas", "washington", "san jose", "santa clara", "charlotte")),
-            Map.entry("us", Set.of("us", "usa", "u.s.", "u.s.a.", "united states", "united states of america", "america", "seattle", "austin", "california", "new york", "texas", "washington", "san jose", "santa clara", "charlotte")),
-            Map.entry("usa", Set.of("us", "usa", "u.s.", "u.s.a.", "united states", "united states of america", "america", "seattle", "austin", "california", "new york", "texas", "washington", "san jose", "santa clara", "charlotte")),
-            Map.entry("united kingdom", Set.of("uk", "u.k.", "united kingdom", "great britain", "britain", "england", "london", "gb")),
-            Map.entry("uk", Set.of("uk", "u.k.", "united kingdom", "great britain", "britain", "england", "london", "gb")),
-            Map.entry("germany", Set.of("de", "germany", "deutschland", "berlin", "munich", "frankfurt")),
-            Map.entry("canada", Set.of("ca", "canada", "toronto", "vancouver", "montreal", "ottawa")),
-            Map.entry("australia", Set.of("au", "australia", "sydney", "melbourne", "brisbane")),
-            Map.entry("singapore", Set.of("sg", "singapore")),
-            Map.entry("ireland", Set.of("ie", "ireland", "dublin"))
-    );
+    private static final Pattern INDIA_PATTERN = Pattern.compile("\\b(IND|IN|INDIA|INDIAN)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern USA_PATTERN = Pattern.compile("\\b(USA|US|UNITED STATES|AMERICA)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern REMOTE_PATTERN = Pattern.compile("\\bREMOTE\\b", Pattern.CASE_INSENSITIVE);
 
-    private JobLocationMatcher() {
-    }
-
-    public static boolean matches(String jobLocation, String requestedLocation) {
-        if (requestedLocation == null || requestedLocation.isBlank()) {
-            return true;
-        }
-        if (jobLocation == null || jobLocation.isBlank()) {
+    public static boolean matchesLocation(String location, String targetCountry) {
+        if (location == null || location.isBlank()) {
             return false;
         }
 
-        String normalizedJob = jobLocation.trim().toLowerCase(Locale.ROOT);
-        String normalizedReq = requestedLocation.trim().toLowerCase(Locale.ROOT);
-
-        if (normalizedJob.contains("remote") || normalizedJob.contains(normalizedReq) || normalizedReq.contains(normalizedJob)) {
+        if (REMOTE_PATTERN.matcher(location).find()) {
             return true;
         }
 
-        Set<String> synonyms = COUNTRY_SYNONYMS.get(normalizedReq);
-        if (synonyms != null) {
-            for (String synonym : synonyms) {
-                if (synonym.length() <= 3) {
-                    if (Pattern.compile("\\b" + Pattern.quote(synonym) + "\\b").matcher(normalizedJob).find()) {
-                        return true;
-                    }
-                } else {
-                    if (normalizedJob.contains(synonym)) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        return switch (targetCountry.toUpperCase()) {
+            case "INDIA" -> INDIA_PATTERN.matcher(location).find();
+            case "USA" -> USA_PATTERN.matcher(location).find();
+            default -> location.toLowerCase().contains(targetCountry.toLowerCase());
+        };
     }
 }

@@ -1,4 +1,4 @@
-import { User, Preferences, Resume, Match } from '../features/jobs/types'
+import { User, Preferences, Resume, Match, AuthCredentials, RegistrationCredentials } from '../features/jobs/types'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 let csrfToken: string | undefined
@@ -43,6 +43,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const apiClient = {
   auth: {
     me: () => request<User>('/api/auth/me'),
+    login: (credentials: AuthCredentials) =>
+      request<User>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      }),
+    register: (credentials: RegistrationCredentials) =>
+      request<User>('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      }),
   },
   profile: {
     getPreferences: () => request<Preferences | null>('/api/profile/preferences'),

@@ -2,23 +2,27 @@ import { useState, useEffect } from 'react'
 import { User } from '../types'
 import { apiClient } from '../../../lib/api-client'
 
+interface AuthState {
+  user: User | null
+  loading: boolean
+  error: string | null
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [authState, setAuthState] = useState<AuthState>({ user: null, loading: true, error: null })
 
   useEffect(() => {
-    apiClient.auth.me()
-      .then((data) => {
-        setUser(data)
-        setError(null)
-      })
-      .catch((err) => {
-        setUser(null)
-        setError(err instanceof Error ? err.message : 'Authentication failed')
-      })
-      .finally(() => setLoading(false))
+    const fetchUser = async () => {
+      try {
+        const user = await apiClient.auth.me()
+        setAuthState({ user, loading: false, error: null })
+      } catch (error) {
+        setAuthState({ user: null, loading: false, error: error instanceof Error ? error.message : 'Authentication failed' })
+      }
+    }
+
+    fetchUser()
   }, [])
 
-  return { user, loading, error }
+  return authState
 }

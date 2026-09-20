@@ -1,5 +1,3 @@
-// Models an application user and account identity data.
-
 package com.honey.jobfetcher.model;
 
 import jakarta.persistence.Entity;
@@ -25,6 +23,8 @@ public class User {
     private Long id;
 
     private String email;
+
+    private String password;
 
     private String oauthProvider;
 

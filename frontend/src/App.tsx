@@ -12,6 +12,7 @@ import { Profile } from './features/profile/components/Profile'
 import { Resume } from './features/resume/components/Resume'
 import { PrivacyPolicy, TermsOfService } from './app/Legal'
 import { LandingPage } from './features/auth/components/LandingPage'
+import { AuthModal } from './features/auth/components/AuthModal'
 import './styles.css'
 
 export default function App() {
@@ -19,7 +20,7 @@ export default function App() {
   if (path === '/privacy-policy') return <PrivacyPolicy />
   if (path === '/terms-of-service') return <TermsOfService />
 
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, error: authError } = useAuth()
   const { preferences, setPreferences, savePreferences, saving } = usePreferences()
   const { savedJobs, savedJobIds, toggleSave } = useSavedJobs()
 

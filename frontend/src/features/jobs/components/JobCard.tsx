@@ -6,7 +6,7 @@ import { Card } from '../../../components/ui/Card'
 import { Badge } from '../../../components/ui/Badge'
 import { cn } from '../../../lib/utils'
 
-export interface JobCardProps {
+interface JobCardProps {
   job: Match
   isSaved: boolean
   onToggleSave: (job: Match) => void

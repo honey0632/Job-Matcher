@@ -29,3 +29,14 @@ export type Match = {
   source?: string
   score?: number
 }
+
+export type AuthCredentials = {
+  email: string
+  password: string
+}
+
+export type RegistrationCredentials = {
+  email: string
+  password: string
+  displayName: string
+}
