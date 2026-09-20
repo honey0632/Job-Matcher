@@ -18,7 +18,7 @@ public class MicrosoftJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = microsoftCareersClient.fetchSearchPage(query);
         return microsoftJobsParser.parse(html);
     }

@@ -18,7 +18,7 @@ public class InfosysJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = infosysJobsClient.fetchSearchPage(query);
         return infosysJobsParser.parse(html);
     }

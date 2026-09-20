@@ -18,7 +18,7 @@ public class AppleJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = appleJobsClient.fetchSearchPage(query);
         return appleJobsParser.parse(html);
     }

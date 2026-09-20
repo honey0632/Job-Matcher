@@ -18,7 +18,7 @@ public class NetflixJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = netflixJobsClient.fetchSearchPage(query);
         return netflixJobsParser.parse(html);
     }

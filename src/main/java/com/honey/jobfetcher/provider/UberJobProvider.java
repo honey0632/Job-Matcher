@@ -18,7 +18,7 @@ public class UberJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = uberJobsClient.fetchSearchPage(query);
         return uberJobsParser.parse(html);
     }

@@ -18,7 +18,7 @@ public class WiproJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = wiproJobsClient.fetchSearchPage(query);
         return wiproJobsParser.parse(html);
     }

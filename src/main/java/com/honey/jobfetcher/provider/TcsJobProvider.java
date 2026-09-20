@@ -18,7 +18,7 @@ public class TcsJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = tcsJobsClient.fetchSearchPage(query);
         return tcsJobsParser.parse(html);
     }

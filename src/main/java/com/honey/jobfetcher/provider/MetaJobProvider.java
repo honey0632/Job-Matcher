@@ -18,7 +18,7 @@ public class MetaJobProvider implements JobProvider {
     }
 
     @Override
-    public List<Jobs> fetch(String query) {
+    public List<Jobs> fetchJobs(String query) {
         String html = metaCareersClient.fetchSearchPage(query);
         return metaJobsParser.parse(html);
     }
