@@ -20,7 +20,10 @@ public class OAuth2AccountService {
         String email = oauth2User.getAttribute("email");
         String subject = oauth2User.getName();
         String displayName = oauth2User.getAttribute("name");
+        return upsertAccount(provider, subject, email, displayName);
+    }
 
+    public User upsertAccount(String provider, String subject, String email, String displayName) {
         User user = userRepository.findByEmail(email)
             .orElseGet(() -> {
                 User newUser = new User();

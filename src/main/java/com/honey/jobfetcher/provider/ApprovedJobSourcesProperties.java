@@ -45,7 +45,9 @@ public class ApprovedJobSourcesProperties {
                 JobSource.RAZORPAY.name(),
                 JobSource.SWIGGY.name(),
                 JobSource.ZOMATO.name()
-            );
+            ).stream()
+                .map(JobSource::valueOf)
+                .toList();
         }
 
         return enabled.stream()

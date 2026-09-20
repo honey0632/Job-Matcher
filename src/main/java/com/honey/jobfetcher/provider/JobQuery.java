@@ -13,4 +13,15 @@ public class JobQuery {
         return query.toLowerCase().contains("india")
             || query.toLowerCase().contains("indian");
     }
+
+    public static boolean matchesText(String query, String... values) {
+        String[] terms = requireValid(query).toLowerCase().split("\\s+");
+        String searchableText = java.util.Arrays.stream(values)
+            .filter(java.util.Objects::nonNull)
+            .map(String::toLowerCase)
+            .reduce("", (left, right) -> left + " " + right);
+        return java.util.Arrays.stream(terms)
+            .filter(term -> term.length() > 2 && !term.matches("\\d+"))
+            .anyMatch(searchableText::contains);
+    }
 }

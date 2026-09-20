@@ -1,8 +1,10 @@
 package com.honey.jobfetcher.config;
 
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -11,11 +13,17 @@ import java.time.Duration;
 public class RestClientConfig {
 
     @Bean
-    public RestClient restClient(RestTemplateBuilder builder) {
-        return RestClient.builder()
-            .requestFactory(builder.build().getRequestFactory())
-            .setConnectTimeout(Duration.ofSeconds(10))
-            .setReadTimeout(Duration.ofSeconds(100))
-            .build();
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    public RestClient.Builder restClientBuilder() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(10));
+        requestFactory.setReadTimeout(Duration.ofSeconds(100));
+
+        return RestClient.builder().requestFactory(requestFactory);
+    }
+
+    @Bean
+    public RestClient restClient() {
+        return restClientBuilder().build();
     }
 }

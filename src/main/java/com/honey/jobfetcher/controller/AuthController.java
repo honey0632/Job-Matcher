@@ -5,11 +5,16 @@ import com.honey.jobfetcher.service.AccountService;
 import com.honey.jobfetcher.service.OAuth2AccountService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -21,6 +26,16 @@ public class AuthController {
     public AuthController(AccountService accountService, OAuth2AccountService oauth2AccountService) {
         this.accountService = accountService;
         this.oauth2AccountService = oauth2AccountService;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, String>> me(Authentication authentication) {
+        return ResponseEntity.ok(Map.of("name", authentication.getName()));
+    }
+
+    @GetMapping("/csrf")
+    public Map<String, String> csrf(CsrfToken token) {
+        return Map.of("token", token.getToken());
     }
 
     @PostMapping("/register")
