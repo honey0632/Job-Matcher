@@ -7,5 +7,13 @@ public enum JobSource {
     GOOGLE_CAREERS,
     AMAZON,
     WELLS_FARGO,
-    NVIDIA
+    NVIDIA,
+    META,
+    MICROSOFT,
+    APPLE,
+    NETFLIX,
+    UBER,
+    INFOSYS,
+    TCS,
+    WIPRO
 }

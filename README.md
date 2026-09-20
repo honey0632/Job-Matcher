@@ -1,337 +1,111 @@
-# Job Fetcher
+# Job Fetcher (LLM-Optimized Architecture Guide)
 
-Spring Boot backend for fetching Google Careers jobs, storing them in PostgreSQL, accepting frontend resume uploads, extracting resume text, and producing baseline job matches.
+> **Context for AI Agents & LLMs**: This document describes the full-stack architecture, key domain models, data flows, and configuration for the **Job Fetcher** repository. Use this as the definitive structural map when refactoring, adding features, or debugging.
 
-## Requirements
+---
 
-- Java 21 or newer
-- PostgreSQL 18 or compatible
-- Maven Wrapper included in the repository
+## 1. High-Level Architectural Overview
 
-Docker Compose is available, but the current local configuration uses the installed PostgreSQL service.
+Job Fetcher is a full-stack platform comprising:
+1. **Backend**: Spring Boot 4.1.1 running on **Java 25**, Spring Data JPA, Spring Security (OAuth2 / OIDC), and PostgreSQL 18+.
+2. **Frontend**: React 18 SPA built with Vite, Tailwind CSS, and TypeScript, adhering to a **Feature-Sliced Architecture**.
+3. **Infrastructure**: Docker Compose, Caddy reverse proxy, and GitHub Actions CD pipelines targeting ARM64 Oracle Cloud VMs (`ghcr.io/honey0632/job-fetcher-*`).
 
-## PostgreSQL configuration
-
-Create a PostgreSQL database and user, then configure `src/main/resources/application.properties` or environment variables:
-
-```text
-DATABASE_URL=jdbc:postgresql://localhost:5432/jobfetcher
-DATABASE_USERNAME=your-postgres-user
-DATABASE_PASSWORD=your-postgres-password
-GOOGLE_CLIENT_ID=your-google-oauth-client-id
-GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
-FRONTEND_ORIGIN=http://localhost:5173
+### Core Pipeline Data Flow
+```
+User (Browser) 
+  ──(HttpOnly Cookie / CSRF)──► Spring Boot REST Controllers
+                                      │
+        ┌─────────────────────────────┴─────────────────────────────┐
+        ▼                                                           ▼
+ Resume Uploads (PDF/DOCX)                              Job Search & Aggregation
+   - Extractor: PDFBox / POI                              - Approved Sources:
+   - Stored under data/resumes/                             Google, Amazon, Wells Fargo, NVIDIA
+                                                                    │
+                                                                    ▼
+                                                        Job Matching Engine
+                                                          - Location Normalization (`JobLocationMatcher`)
+                                                          - Gemini AI Semantic Scoring / Keyword Fallback
+                                                          - PostgreSQL Persistence (`jobs`, `saved_jobs`)
 ```
 
-The application currently uses:
+---
 
-```text
+## 2. Key Package Structure
+
+### Backend (`src/main/java/com/honey/jobfetcher`)
+- **`client/`**: External HTTP clients using Spring `RestClient` with explicit timeouts (`RestClientConfig`).
+- **`config/`**: Security configuration (`SecurityConfig`), OAuth2/OIDC account provisioning (`OAuth2AccountService`, `OidcAccountService`), and HTTP client beans.
+- **`controller/`**: REST endpoints (`AuthController`, `JobsController`, `ProfileController`, `ResumeController`).
+- **`dto/`**: Request/response DTO records (`JobSearchRequest`, `JobMatchResponse`, etc.).
+- **`exception/`**: Explicit application error handlers.
+- **`extractor/`**: `PdfDocxTextExtractor` wrapping Apache PDFBox and Apache POI.
+- **`model/`**: JPA Entities (`User`, `Resume`, `SearchPreferences`, `Jobs`, `SavedJob`).
+- **`parser/`**: Parsers for external feeds (`GoogleCareersParser`, `AmazonJobsParser`, `SafeXmlParser` for Wells Fargo, JSON-LD parser for NVIDIA).
+- **`provider/`**: `JobProvider` implementations and `JobLocationMatcher` (regex token synonyms for multi-country matching like `IND`/`IN`, `USA`/`US`).
+- **`repository/`**: Spring Data JPA repositories.
+- **`service/`**: Business logic, including `CriteriaSearchService`, `JobsService`, `GeminiJobMatchingService`, and `KeywordJobMatchingService`.
+
+### Frontend (`frontend/src/`)
+Structured according to **Feature-Sliced Design (FSD)**:
+- **`app/`**: Root shells, constants (`constants.ts`), and legal page wrappers (`Legal.tsx`).
+- **`components/ui/`**: Domain-agnostic atomic UI primitives (`Button`, `Card`, `Badge`, `Input`) designed with modern Tailwind styling (zinc-950 canvas, inner glows, subtle backdrop blurs).
+- **`features/`**: Business modules structured into `components/`, `hooks/`, `types/`:
+  - `auth/`: Google OAuth / OIDC landing page and session hooks (`useAuth`).
+  - `jobs/`: Job cards (`JobCard`), skeletons (`JobSkeleton`), list management (`JobList`), dashboard (`Home`), search panel (`Search`), AI recommendations (`Matches`), and bookmarking logic (`useSavedJobs`).
+  - `profile/`: Search parameters configuration (`Profile`) and preferences hook (`usePreferences`).
+  - `resume/`: PDF/DOCX file extraction UI (`Resume`).
+- **`lib/`**: Centralized utilities:
+  - `api-client.ts`: Typed fetch wrapper handling CSRF headers (`X-XSRF-TOKEN`) and session credentials.
+  - `utils.ts`: Tailwind merge helper (`cn()`).
+
+---
+
+## 3. Critical Domain Rules & Technical Gotchas
+
+1. **Java 25 Runtime**:
+   - `pom.xml` sets `<java.version>25</java.version>`.
+   - `Dockerfile` uses Eclipse Temurin 25 for both multi-stage builds and runtime.
+2. **Job Sources & Identification**:
+   - Ingested jobs are upserted by `externalId` to prevent duplicates.
+   - Non-Google providers prefix their IDs (e.g., `AMAZON:id`, `WELLS_FARGO:ref`, `NVIDIA:id`).
+3. **Location Filtering (`JobLocationMatcher`)**:
+   - Substring matching fails across diverse employer formats. `JobLocationMatcher` uses word-boundary regex tokens (e.g. `\bIND\b`, `\bIN\b`) to correctly filter jobs against the user's target country while always including remote roles.
+4. **Matching Providers**:
+   - Configured via `app.matching.provider` (`keyword` or `gemini`).
+   - `GeminiJobMatchingService` sends batches of location-filtered jobs to Google Gemini (`gemini-2.5-flash` / `gemini-3.6-flash`) with a 100-second read timeout (`RestClientConfig`), falling back gracefully to title-weighted keyword overlap on failure.
+5. **Saved Jobs Dual-Layer Cache**:
+   - Frontend (`useSavedJobs` hook) syncs bookmarks immediately with browser `localStorage` (`job-fetcher.saved-jobs.v1`) while persisting updates asynchronously to `/api/jobs/saved/{jobId}`.
+
+---
+
+## 4. Configuration Reference (`src/main/resources/application.properties`)
+
+```properties
+spring.datasource.url=${DATABASE_URL:jdbc:postgresql://localhost:5432/jobfetcher}
+spring.datasource.username=${DATABASE_USERNAME:honey0632}
+spring.datasource.password=${DATABASE_PASSWORD:Honey@632}
+
 spring.jpa.hibernate.ddl-auto=update
+app.frontend.origin=${FRONTEND_ORIGIN:http://localhost:5173}
+
+# Matching & Sources
+app.matching.provider=${MATCHING_PROVIDER:keyword}
+app.job-sources.enabled=${JOB_SOURCES_ENABLED:GOOGLE_CAREERS,AMAZON,WELLS_FARGO,NVIDIA}
+app.gemini.api-key=${GEMINI_API_KEY:}
+app.gemini.model=${GEMINI_MODEL:gemini-2.5-flash}
 ```
 
-This is suitable for development. Use migrations before production deployment.
+---
 
-## Run the application
+## 5. Build, Test & Verification Commands
 
 ```powershell
+# Run Java backend test suite (JUnit 5 / Spring Boot Tests)
 .\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
 
-The server starts on:
-
-```text
-http://localhost:8080
-```
-
-## Job API
-
-Fetch and persist Google Careers results (the compatibility GET endpoint remains
-Google-only):
-
-```text
-GET /api/jobs/search?query=software%20engineer
-```
-
-List stored jobs:
-
-```text
-GET /api/jobs
-```
-
-Get one stored job:
-
-```text
-GET /api/jobs/{id}
-```
-
-Repeated searches update existing records by `externalId` instead of creating duplicates.
-Amazon, Wells Fargo, and NVIDIA records use source-prefixed IDs, so their IDs
-cannot collide with each other or existing Google records.
-
-### Approved job sources
-
-The criteria-search endpoint (`POST /api/jobs/search`) fetches and persists
-each configured approved source before matching the authenticated user's
-resume. By default this includes Google Careers, Amazon, Wells Fargo, and
-NVIDIA:
-
-```text
-JOB_SOURCES_ENABLED=GOOGLE_CAREERS,AMAZON,WELLS_FARGO,NVIDIA
-```
-
-Set `JOB_SOURCES_ENABLED` to a comma-separated subset (for example,
-`GOOGLE_CAREERS,AMAZON`) to limit outbound source work during development.
-Each source uses explicit HTTP timeouts and bounded retrieval. Amazon requests
-at most three sequential 100-result pages; Wells Fargo's XML response is
-locally filtered and size-bounded; NVIDIA fetches only matching public sitemap
-job pages (at most 25). A configured source failure returns an explicit search
-error rather than silently treating it as no results.
-
-Only the public GET feeds/pages documented above are used. No Microsoft or D.
-E. Shaw provider is implemented.
-
-## Resume API
-
-OAuth2 login:
-
-```text
-GET /oauth2/authorization/google
-```
-
-Configure this Google OAuth redirect URI:
-
-```text
-http://localhost:8080/login/oauth2/code/google
-```
-
-The backend stores authentication in a server session and the browser uses an HttpOnly session cookie. OAuth tokens are not stored in local storage.
-
-Current authenticated user:
-
-```text
-GET /api/auth/me
-```
-
-Create a user (legacy development endpoint):
-
-```http
-POST /api/users
-Content-Type: application/json
-
-{
-  "email": "candidate@example.com"
-}
-```
-
-Upload a PDF or DOCX resume from the authenticated frontend:
-
-```text
-POST /api/resumes/upload
-Content-Type: multipart/form-data
-```
-
-The multipart field name must be:
-
-```text
-file
-```
-
-List the authenticated user's uploaded resumes:
-
-```text
-GET /api/resumes
-```
-
-Supported files:
-
-- PDF: `application/pdf`
-- DOCX: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-- Maximum request size: 10 MB
-
-Files are stored under `data/resumes/` by default and that directory is ignored by Git. Override the location with:
-
-```text
-RESUME_STORAGE_DIR=C:\path\outside\the\repository
-```
-
-The upload response reports the extraction status. A successful upload currently reaches `EXTRACTED`; malformed documents report an extraction failure.
-
-## Matching API
-
-Save authenticated search preferences:
-
-```http
-PUT /api/profile/preferences
-Content-Type: application/json
-
-{
-  "country": "India",
-  "experienceYears": 3,
-  "desiredRole": "Java Backend Engineer"
-}
-```
-
-Run the criteria-based search and return only matches above 80%:
-
-```http
-POST /api/jobs/search
-Content-Type: application/json
-
-{
-  "country": "India",
-  "experienceYears": 3,
-  "desiredRole": "Java Backend Engineer"
-}
-```
-
-Request authenticated baseline matches:
-
-```text
-GET /api/jobs/matches?limit=20
-```
-
-The current implementation uses normalized keyword overlap between extracted resume text and stored job title/description. It is an intentionally replaceable baseline; embeddings and vector search are not enabled yet.
-
-## Frontend
-
-```powershell
+# Build frontend SPA (TypeScript type check + Vite production bundle)
 Set-Location frontend
 npm install
-npm run dev
-```
-
-Set `frontend/.env` when the backend is not on the default origin:
-
-```text
-VITE_API_BASE_URL=http://localhost:8080
-```
-
-You can start from `frontend/.env.example`.
-
-## Frontend integration
-
-The React frontend should:
-
-1. Sign in through Google OAuth2.
-2. Save country, experience, and desired role.
-3. Send the resume as `multipart/form-data` using the `file` field.
-4. Submit the criteria search.
-5. Display the returned jobs, all of which have a score strictly greater than 80.
-
-For browser requests from a separate frontend origin, configure CORS before connecting the production frontend.
-
-## Docker and CI/CD
-
-The repository includes production Dockerfiles:
-
-- `Dockerfile` builds and runs the Spring Boot backend.
-- `frontend/Dockerfile` builds the React application and serves it with Nginx.
-
-Build the images locally:
-
-```powershell
-docker build -t job-fetcher-backend .
-docker build --build-arg VITE_API_BASE_URL=http://localhost:8080 -t job-fetcher-frontend frontend
-```
-
-GitHub Actions uses independent backend and frontend pipelines:
-
-- `.github/workflows/backend-ci.yml` runs backend tests when backend files change.
-- `.github/workflows/frontend-ci.yml` builds the frontend when frontend files change.
-- `.github/workflows/backend-cd.yml` publishes and deploys only the backend image.
-- `.github/workflows/frontend-cd.yml` publishes and deploys only the frontend image.
-
-The CD workflows deploy the immutable `sha-<commit>` image tag and restart only
-the changed Compose service. They require these repository secrets:
-
-```text
-JOBMATCHER_PRODUCTION_HOST
-JOBMATCHER_PRODUCTION_USER
-JOBMATCHER_PRODUCTION_SSH_KEY
-```
-
-The production server must already be authenticated to GHCR, and the repository
-variable `JOBMATCHER_VITE_API_BASE_URL` must be set before publishing the frontend image.
-
-The published images target both `linux/amd64` and `linux/arm64`, so they run on Oracle Cloud `VM.Standard.A1.Flex` instances.
-
-Create this GitHub repository variable before publishing the frontend image:
-
-```text
-VITE_API_BASE_URL=https://your-api-domain.com
-```
-
-The workflow publishes:
-
-```text
-ghcr.io/<owner>/job-fetcher-backend:latest
-ghcr.io/<owner>/job-fetcher-frontend:latest
-```
-
-The Oracle Cloud deployment server should pull these images and provide the runtime secrets through environment variables. Do not put database passwords or OAuth secrets in the workflow or Dockerfiles.
-
-### Environment variables
-
-Copy the root environment template before running locally or deploying:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Edit `.env` with the real database, Google OAuth, domain, storage, and registry values. The `.env` file is ignored by Git and must never be committed.
-
-Spring Boot loads this file automatically when running locally, while Docker Compose loads it through `env_file`.
-
-For an Oracle Cloud VM deployment:
-
-```powershell
-docker login ghcr.io
-docker compose --env-file .env -f compose.production.yaml pull
-docker compose --env-file .env -f compose.production.yaml up -d
-```
-
-The production Compose file runs PostgreSQL on the same Oracle VM to avoid an additional database charge. PostgreSQL data is stored in the named `postgres-data` volume and should be backed up separately. Copy `.env.oracle.example` to `.env` on the VM and replace `POSTGRES_PASSWORD` with a strong random value before deployment. Do not use the local developer `.env` on the VM.
-
-The production stack also includes Caddy. It serves HTTPS for `jobmatcher.in` and `api.jobmatcher.in` and routes traffic to the frontend and backend containers. Both DNS records must point to the Oracle VM before Caddy can obtain certificates.
-
-The frontend image receives `VITE_API_BASE_URL` during the GitHub Actions build. Set the corresponding GitHub repository variable before publishing production images. Runtime secrets such as database credentials and OAuth secrets belong only in the server's `.env`.
-
-### Matching provider and location filtering
-
-Search filtering uses the requested country against each job's parsed location.
-Jobs marked as remote are also included. Matching is configurable:
-
-```text
-MATCHING_PROVIDER=keyword
-```
-
-For Gemini matching, configure the server environment with:
-
-```text
-MATCHING_PROVIDER=gemini
-GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.5-flash
-```
-
-Gemini scores the resume against up to 25 location-filtered jobs at a time.
-The API key is used only by the backend and must never be committed or exposed
-to the frontend. If Gemini is enabled without `GEMINI_API_KEY`, the backend
-returns an explicit configuration error rather than silently using another
-matcher.
-
-## Project structure
-
-```text
-src/main/java/com/honey/jobfetcher
-├── client       External Google Careers client
-├── config       Spring configuration
-├── controller   REST endpoints
-├── dto          API request/response objects
-├── exception    Explicit application errors
-├── extractor    PDF/DOCX text extraction
-├── model        JPA entities
-├── parser       Google Careers response parsing
-├── repository   Spring Data repositories
-└── service      Business logic and matching
+npm run build
 ```
