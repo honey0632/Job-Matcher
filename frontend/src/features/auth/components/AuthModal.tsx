@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LogIn, Eye, EyeOff } from 'lucide-react'
+import { LogIn, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Input } from '../../../components/ui/Input'
@@ -12,6 +12,7 @@ interface AuthModalProps {
 
 export function AuthModal({ onClose }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true)
+  const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -25,6 +26,10 @@ export function AuthModal({ onClose }: AuthModalProps) {
     setError(null)
 
     try {
+      if (isForgotPassword) {
+        setError('Password reset is not configured yet. Please contact the administrator.')
+        return
+      }
       if (isLogin) {
         const credentials: AuthCredentials = { email, password }
         await apiClient.auth.login(credentials)
@@ -44,7 +49,9 @@ export function AuthModal({ onClose }: AuthModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-md p-6 space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold">{isLogin ? 'Sign In' : 'Create Account'}</h2>
+          <h2 className="text-xl font-bold">
+            {isForgotPassword ? 'Reset Password' : isLogin ? 'Sign In' : 'Create Account'}
+          </h2>
           <button onClick={onClose} className="text-zinc-400 hover:text-white">
             ×
           </button>
@@ -68,7 +75,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             />
           </div>
 
-          {!isLogin && (
+          {!isLogin && !isForgotPassword && (
             <div className="space-y-2">
               <label htmlFor="displayName" className="text-sm font-medium">Display Name</label>
               <Input
@@ -81,36 +88,38 @@ export function AuthModal({ onClose }: AuthModalProps) {
             </div>
           )}
 
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <label htmlFor="password" className="text-sm font-medium">Password</label>
-              {isLogin && (
+          {!isForgotPassword && (
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label htmlFor="password" className="text-sm font-medium">Password</label>
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
+                    className="text-sm text-zinc-400 hover:text-white"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
                 <button
                   type="button"
-                  onClick={() => setIsLogin(false)}
-                  className="text-sm text-zinc-400 hover:text-white"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
                 >
-                  Forgot password?
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              )}
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
@@ -118,7 +127,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             ) : (
               <>
                 <LogIn className="w-4 h-4 mr-2" />
-                {isLogin ? 'Sign In' : 'Create Account'}
+                {isForgotPassword ? 'Request Reset Link' : isLogin ? 'Sign In' : 'Create Account'}
               </>
             )}
           </Button>
@@ -133,16 +142,27 @@ export function AuthModal({ onClose }: AuthModalProps) {
           </div>
         </div>
 
-        <Button
+        {!isForgotPassword && <Button
           variant="secondary"
           className="w-full"
-          onClick={() => window.location.href = `${import.meta.env.VITE_API_BASE_URL}/oauth2/authorization/google`}
+          onClick={() => {
+            const backendUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+            window.location.href = `${backendUrl}/oauth2/authorization/google`
+          }}
         >
           Continue with Google
-        </Button>
+        </Button>}
 
         <div className="text-center text-sm text-zinc-400">
-          {isLogin ? (
+          {isForgotPassword ? (
+            <button
+              type="button"
+              onClick={() => { setIsForgotPassword(false); setError(null) }}
+              className="text-white hover:underline inline-flex items-center gap-1"
+            >
+              <ArrowLeft className="w-3 h-3" /> Back to sign in
+            </button>
+          ) : isLogin ? (
             <>Don't have an account? <button type="button" onClick={() => setIsLogin(false)} className="text-white hover:underline">Sign up</button></>
           ) : (
             <>Already have an account? <button type="button" onClick={() => setIsLogin(true)} className="text-white hover:underline">Sign in</button></>

@@ -1,22 +1,14 @@
 import React, { useState } from 'react'
-import { LogIn, Sparkles, Database, ShieldCheck, Cpu } from 'lucide-react'
+import { Sparkles, Database, ShieldCheck, Cpu } from 'lucide-react'
 import { Card } from '../../../components/ui/Card'
 import { Button } from '../../../components/ui/Button'
 import { LegalLinks } from '../../../app/Legal'
+import { AuthModal } from './AuthModal'
 
 const backendUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 export function LandingPage() {
   const [showLogin, setShowLogin] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle login logic here
-    console.log('Login attempt with', email, password)
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-white/10">
@@ -38,62 +30,7 @@ export function LandingPage() {
       {/* Main Content */}
       <main className="flex-1 max-w-6xl mx-auto px-6 py-12 md:py-24 space-y-24">
         {showLogin ? (
-          <div className="flex items-center justify-center">
-            <Card className="w-full max-w-md p-8 space-y-6">
-              <div className="space-y-2 text-center">
-                <h2 className="text-2xl font-bold">Sign In</h2>
-                <p className="text-sm text-zinc-400">Enter your credentials to access your account</p>
-              </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium">Email</label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-white/[0.08] rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="text-sm font-medium">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-sm text-zinc-400 hover:text-zinc-300 focus:outline-none"
-                    >
-                      {showPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-white/[0.08] rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full">
-                  Sign In
-                </Button>
-              </form>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-white/[0.08]"></span>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-zinc-950 px-2 text-zinc-400">Or continue with</span>
-                </div>
-              </div>
-              <Button variant="secondary" className="w-full" onClick={() => window.location.href = `${backendUrl}/oauth2/authorization/google`}>
-                <LogIn className="w-4 h-4 mr-2" />
-                Continue with Google
-              </Button>
-            </Card>
-          </div>
+          <AuthModal onClose={() => setShowLogin(false)} />
         ) : (
           <>
             {/* Hero Section */}
