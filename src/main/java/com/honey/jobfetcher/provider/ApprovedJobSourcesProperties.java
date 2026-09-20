@@ -26,7 +26,25 @@ public class ApprovedJobSourcesProperties {
                 JobSource.UBER.name(),
                 JobSource.INFOSYS.name(),
                 JobSource.TCS.name(),
-                JobSource.WIPRO.name()
+                JobSource.WIPRO.name(),
+                JobSource.ADOBE.name(),
+                JobSource.SALESFORCE.name(),
+                JobSource.ATLASSIAN.name(),
+                JobSource.INTUIT.name(),
+                JobSource.SERVICENOW.name(),
+                JobSource.ORACLE.name(),
+                JobSource.CISCO.name(),
+                JobSource.DATABRICKS.name(),
+                JobSource.SNOWFLAKE.name(),
+                JobSource.PALO_ALTO_NETWORKS.name(),
+                JobSource.STRIPE.name(),
+                JobSource.PAYPAL.name(),
+                JobSource.LINKEDIN.name(),
+                JobSource.POSTMAN.name(),
+                JobSource.FLIPKART.name(),
+                JobSource.RAZORPAY.name(),
+                JobSource.SWIGGY.name(),
+                JobSource.ZOMATO.name()
             );
         }
 
