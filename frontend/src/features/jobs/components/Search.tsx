@@ -24,9 +24,11 @@ export function Search({
 }: SearchProps) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function performSearch() {
     setLoading(true)
+    setError(null)
     try {
       const criteria: Preferences = {
         ...preferences,
@@ -34,6 +36,9 @@ export function Search({
       }
       const results = await apiClient.jobs.search(criteria)
       setMatches(results)
+    } catch (err) {
+      setMatches([])
+      setError(err instanceof Error ? err.message : 'Unable to fetch jobs from this company')
     } finally {
       setLoading(false)
     }
@@ -97,6 +102,12 @@ export function Search({
               )}
             </Button>
           </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+              {error}
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-3">

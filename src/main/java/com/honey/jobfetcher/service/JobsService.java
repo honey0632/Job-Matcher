@@ -82,8 +82,9 @@ public class JobsService {
         try {
             return fetchAndSave(providerFor(source), query);
         } catch (RuntimeException exception) {
-            logger.warn("Failed to fetch {} jobs: {}", source, exception.getMessage());
-            return List.of();
+            logger.warn("Failed to fetch {} jobs: {}", source, exception.getMessage(), exception);
+            throw new IllegalStateException("Unable to fetch jobs from " + source + ": "
+                    + exception.getMessage(), exception);
         }
     }
 
