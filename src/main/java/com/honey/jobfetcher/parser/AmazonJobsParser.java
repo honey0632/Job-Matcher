@@ -1,6 +1,7 @@
 package com.honey.jobfetcher.parser;
 
 import com.honey.jobfetcher.model.Jobs;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.honey.jobfetcher.provider.JobSource;
 import com.honey.jobfetcher.provider.JobUrlPolicy;
 import org.jsoup.Jsoup;
@@ -30,7 +31,7 @@ public class AmazonJobsParser {
         JsonNode root;
         try {
             root = objectMapper.readTree(response);
-        } catch (RuntimeException exception) {
+        } catch (JsonProcessingException | RuntimeException exception) {
             throw new IllegalStateException("Unable to parse Amazon Jobs JSON response", exception);
         }
 

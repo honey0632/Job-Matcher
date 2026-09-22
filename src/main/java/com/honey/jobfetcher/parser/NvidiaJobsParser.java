@@ -1,6 +1,7 @@
 package com.honey.jobfetcher.parser;
 
 import com.honey.jobfetcher.client.NvidiaJobsClient;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.provider.JobSource;
 import com.honey.jobfetcher.provider.JobUrlPolicy;
@@ -93,7 +94,7 @@ public class NvidiaJobsParser {
                 if (jobPosting != null) {
                     return jobPosting;
                 }
-            } catch (RuntimeException exception) {
+            } catch (JsonProcessingException | RuntimeException exception) {
                 throw new IllegalStateException("Unable to parse NVIDIA JobPosting JSON-LD", exception);
             }
         }

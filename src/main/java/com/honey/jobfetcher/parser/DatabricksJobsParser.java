@@ -1,5 +1,6 @@
 package com.honey.jobfetcher.parser;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.honey.jobfetcher.model.Jobs;
@@ -44,7 +45,7 @@ public class DatabricksJobsParser {
                 }
             }
             return jobs;
-        } catch (RuntimeException exception) {
+        } catch (JsonProcessingException | RuntimeException exception) {
             throw new IllegalStateException("Unable to parse Databricks job data", exception);
         }
     }

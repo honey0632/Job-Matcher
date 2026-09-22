@@ -3,6 +3,7 @@ package com.honey.jobfetcher.parser;
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.provider.JobSource;
 import org.springframework.stereotype.Component;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -40,7 +41,7 @@ public class StripeJobsParser {
                 jobs.add(job);
             }
             return jobs;
-        } catch (RuntimeException exception) {
+        } catch (JsonProcessingException | RuntimeException exception) {
             throw new IllegalStateException("Unable to parse Stripe Greenhouse job data", exception);
         }
     }

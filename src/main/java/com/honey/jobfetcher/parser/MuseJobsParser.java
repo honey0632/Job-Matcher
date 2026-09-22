@@ -1,5 +1,6 @@
 package com.honey.jobfetcher.parser;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.honey.jobfetcher.model.Jobs;
 import com.honey.jobfetcher.provider.JobSource;
 import org.jsoup.Jsoup;
@@ -42,7 +43,7 @@ public class MuseJobsParser {
                 jobs.add(job);
             }
             return jobs;
-        } catch (RuntimeException exception) {
+        } catch (JsonProcessingException | RuntimeException exception) {
             throw new IllegalStateException("Unable to parse The Muse job data", exception);
         }
     }
