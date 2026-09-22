@@ -3,6 +3,7 @@
 package com.honey.jobfetcher.parser;
 
 import com.honey.jobfetcher.model.Jobs;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -33,7 +34,7 @@ public class GoogleCareersParser {
         try {
             JsonNode root = objectMapper.readTree(dataJson);
             return readJobs(root);
-        } catch (RuntimeException exception) {
+        } catch (JsonProcessingException | RuntimeException exception) {
             throw new IllegalStateException("Unable to parse Google Careers job data", exception);
         }
     }
